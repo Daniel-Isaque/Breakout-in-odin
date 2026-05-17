@@ -132,7 +132,7 @@ main :: proc() {
 	screen_width :: 400
 	screen_height :: 400
 
-	rl.InitWindow(screen_width, screen_height, "Pong 1987")
+	rl.InitWindow(screen_width, screen_height, "Breakout 1976")
 	rl.SetTargetFPS(60)
 	defer rl.CloseWindow()
 	ball.width = 10

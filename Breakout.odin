@@ -153,9 +153,9 @@ main :: proc() {
 	defer rl.CloseWindow()
 	defer rl.CloseAudioDevice()
 
-	paddle_sound := rl.LoadSound("jogo_2/assets/Audio/Blip.wav")
-	win_sound := rl.LoadSound("jogo_2/assets/Audio/Win_test.wav")
-	boom_sound := rl.LoadSound("jogo_2/assets/Audio/Boom.wav")
+	paddle_sound := rl.LoadSound("assets/Audio/Blip.wav")
+	win_sound := rl.LoadSound("assets/Audio/Win_test.wav")
+	boom_sound := rl.LoadSound("assets/Audio/Boom.wav")
 
 	defer rl.UnloadSound(win_sound)
 	defer rl.UnloadSound(paddle_sound)
@@ -203,6 +203,8 @@ main :: proc() {
 			block[i].y = f32(collum * int(block[i].y) / 5 + 40)
 		}
 	}
+
+	Balls: [dynamic]Ball = make([dynamic]Ball, 0, 1)
 	for !rl.WindowShouldClose() {
 
 		rl.BeginDrawing()

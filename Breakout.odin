@@ -9,9 +9,9 @@ lives: i32 = 5
 round_old: i32 = 0
 round: i32 = 0
 Ball :: struct {
-	x, y:             f32,
-	width, height:    f32,
-	speed_x, speed_y: f32,
+	x, y:                                       f32,
+	width, height:                              f32,
+	old_speed_x, old_speed_y, speed_x, speed_y: f32,
 }
 
 Draw :: proc(b: Ball) {
@@ -22,10 +22,15 @@ Update :: proc(b: ^Ball) {
 	b.x += b.speed_x + 0.2 * f32(round + 1)
 	b.y += b.speed_y + 0.2 * f32(round)
 
-	if b.x + b.width >= f32(rl.GetScreenWidth()) || b.x - b.width <= 0 {
+	if i32(b.x + b.width) >= rl.GetScreenWidth() {
+		b.x = f32(rl.GetScreenWidth()) - b.width + 0.1
+		b.speed_x *= -1
+		fmt.printf("colidiu")
+	}
+	if b.x <= 0 {
+		b.x += 0.1
 		b.speed_x *= -1
 	}
-
 
 	if b.y + b.height >= f32(rl.GetScreenHeight()) {
 		lives -= 1
@@ -77,22 +82,15 @@ Update_rec :: proc(p: ^Paddle) {
 	}
 }
 
-Update_cpu :: proc(p: ^Paddle, b: ^Ball) {
-	if (p.y + p.height / 2 > b.y) {
-		p.y -= p.speed
-	}
-	if (p.y + p.height / 2 <= b.y) {
-		p.y += p.speed
-	}
-}
-
 Check :: proc(p: ^Paddle, b: ^Ball) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{b.x, b.y, b.width, b.height},
 		rl.Rectangle{p.x, p.y, p.width, p.height},
 	) {
+		b.speed_y = b.old_speed_y
 		b.speed_y *= -1
 		b.y = p.y - b.height
+
 	}
 
 }
@@ -102,8 +100,14 @@ Check_jail :: proc(p: ^Jail, b: ^Ball) {
 		rl.Rectangle{p.x, p.y, p.width, p.height},
 	) {
 		b.speed_y *= -1
-		p.active = false
-		playerScore += 1
+		if p.durability <= 0 {p.active = false
+			playerScore += 1}
+		lista := [2]f32{-1, 1}
+		ball.speed_y = ball.old_speed_y
+		decision: f32 = lista[rand.int_max(2)]
+		b.speed_x *= decision
+		b.speed_y *= 1.3
+
 	}
 
 }
@@ -114,6 +118,7 @@ Jail :: struct {
 	width, height: f32,
 	active:        bool,
 	cor:           []rl.Color,
+	durability:    i32,
 }
 
 Reset_game :: struct {
@@ -141,9 +146,10 @@ main :: proc() {
 	ball.x = screen_width / 2
 	ball.y = screen_height / 2
 	ball.speed_x = 4
-	ball.speed_y = 4
-
-	player.width = 25
+	ball.speed_y = 8
+	ball.old_speed_x = ball.speed_x
+	ball.old_speed_y = ball.speed_y
+	player.width = 400
 	player.height = 10
 	player.x = screen_width / 2 - 30
 	player.y = screen_height - 50
@@ -155,7 +161,7 @@ main :: proc() {
 	jail.y = 80
 	jail.active = true
 	jail.cor = {rl.RED, rl.ORANGE, rl.YELLOW, rl.DARKGREEN, rl.DARKBLUE, rl.PURPLE, rl.SKYBLUE}
-
+	jail.durability = 1 * round
 
 	restart.ball_reset = ball
 	restart.jail_reset = jail
@@ -238,7 +244,6 @@ main :: proc() {
 			}
 
 		}
-		fmt.printf("%v", round)
 		rl.EndDrawing()
 	}
 }

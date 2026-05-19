@@ -7,7 +7,7 @@ import rl "vendor:raylib"
 playerScore: i32 = 0
 lives: i32 = 5
 round_old: i32 = 0
-round: i32 = 0
+round: i32 = 1
 Ball :: struct {
 	x, y:                                       f32,
 	width, height:                              f32,
@@ -100,13 +100,14 @@ Check_jail :: proc(p: ^Jail, b: ^Ball) {
 		rl.Rectangle{p.x, p.y, p.width, p.height},
 	) {
 		b.speed_y *= -1
+		p.durability -= 1
 		if p.durability <= 0 {p.active = false
 			playerScore += 1}
 		lista := [2]f32{-1, 1}
 		ball.speed_y = ball.old_speed_y
 		decision: f32 = lista[rand.int_max(2)]
 		b.speed_x *= decision
-		b.speed_y *= 1.3
+		b.speed_y *= 1.2
 
 	}
 
@@ -146,10 +147,11 @@ main :: proc() {
 	ball.x = screen_width / 2
 	ball.y = screen_height / 2
 	ball.speed_x = 4
-	ball.speed_y = 8
+	ball.speed_y = 15
 	ball.old_speed_x = ball.speed_x
 	ball.old_speed_y = ball.speed_y
-	player.width = 400
+
+	player.width = 450
 	player.height = 10
 	player.x = screen_width / 2 - 30
 	player.y = screen_height - 50
@@ -161,7 +163,7 @@ main :: proc() {
 	jail.y = 80
 	jail.active = true
 	jail.cor = {rl.RED, rl.ORANGE, rl.YELLOW, rl.DARKGREEN, rl.DARKBLUE, rl.PURPLE, rl.SKYBLUE}
-	jail.durability = 1 * round
+	jail.durability = 1
 
 	restart.ball_reset = ball
 	restart.jail_reset = jail
@@ -239,6 +241,7 @@ main :: proc() {
 
 			for i in 0 ..< len(block) {
 				if !block[i].active {
+					block[i].durability = 1 * round
 					block[i].active = true
 				}
 			}

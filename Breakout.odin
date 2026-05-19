@@ -9,13 +9,15 @@ lives: i32 = 5
 round_old: i32 = 0
 round: i32 = 1
 
+BALL_SPEED_X : f32 : 4.0
+BALL_SPEED_Y : f32 : 5.0
 
 Paddle_sound := rl.LoadSound("~/meu_jogo/jogo_2/assets/Audio/Blip.wav")
 
 Ball :: struct {
 	x, y:                                       f32,
 	width, height:                              f32,
-	old_speed_x, old_speed_y, speed_x, speed_y: f32,
+	speed_x, speed_y: f32,
 }
 
 Draw :: proc(b: Ball) {
@@ -27,24 +29,26 @@ Update :: proc(b: ^Ball, s: rl.Sound) {
 	b.y += b.speed_y + 0.2 * f32(round)
 
 	if i32(b.x + b.width) >= rl.GetScreenWidth() {
-		b.x = f32(rl.GetScreenWidth()) - b.width + 0.1
-		b.speed_x *= -1
+		b.x = f32(rl.GetScreenWidth()) - b.width
+		b.speed_x = -BALL_SPEED_X
 		fmt.printf("colidiu")
 	}
 	if b.x <= 0 {
-		b.x += 0.1
-		b.speed_x *= -1
+		b.x = 0
+		b.speed_x = BALL_SPEED_X
 	}
 
-	if b.y + b.height >= f32(rl.GetScreenHeight()) {
+	if b.y >= f32(rl.GetScreenHeight()) {
 		lives -= 1
-		b.speed_x *= -1
 		ResetBall(&b^)
 	}
-	if b.y - b.height <= 0 {
-		rl.PlaySound(s)
-		round += 1
 
+	// o que eh pra ser isso, porque sair da tela por cima te aumenta um round?
+	if b.y <= 0 {
+		rl.PlaySound(s)
+		// aqui voce deveria refletir pra baixo, mas como nao fez isso, nao sei se descomentar
+		// b.speed = BALL_SPEED_Y
+		round += 1
 	}
 }
 
@@ -92,19 +96,37 @@ Check :: proc(p: ^Paddle, b: ^Ball, s: rl.Sound) {
 		rl.Rectangle{b.x, b.y, b.width, b.height},
 		rl.Rectangle{p.x, p.y, p.width, p.height},
 	) {
-		rl.PlaySound(s)
-		b.speed_y = b.old_speed_y
-		b.speed_y *= -1
+		paddle_mid_y := p.y + (p.height / 2.0)
+        ball_bottom  := b.y + b.height
+
+		// checando isso pq a bola se salva o tempo todo
+        if ball_bottom > paddle_mid_y {
+            return 
+        }
+
+		rl.PlaySound(s) 
+
 		b.y = p.y - b.height
+		b.speed_y = -BALL_SPEED_Y
 
+		paddle_center := p.x + (p.width / 2.0)
+		ball_center := b.x + (b.width / 2.0)
+
+		if ball_center < paddle_center {
+			b.speed_x = -BALL_SPEED_X
+		} else {
+			b.speed_x = BALL_SPEED_X
+		}
 	}
-
 }
+
 Check_jail :: proc(p: ^Jail, b: ^Ball, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{b.x, b.y, b.width, b.height},
 		rl.Rectangle{p.x, p.y, p.width, p.height},
 	) {
+
+		/*
 		b.speed_y *= -1
 		p.durability -= 1
 		if p.durability <= 0 {p.active = false
@@ -115,11 +137,23 @@ Check_jail :: proc(p: ^Jail, b: ^Ball, s: rl.Sound) {
 		decision: f32 = lista[rand.int_max(2)]
 		b.speed_x *= decision
 		b.speed_y *= 1.2
-
+		*/
+		
+		p.durability -= 1
+		if p.durability <= 0 {
+			p.active = false
+			rl.PlaySound(s)
+			playerScore += 1
+		}
+		
+		// mais simples. se quiser reimplementar o bgl, deixei comentado ali a versao velha.
+        if b.speed_y < 0 {
+            b.speed_y = BALL_SPEED_Y
+        } else {
+            b.speed_y = -BALL_SPEED_Y
+        }
 	}
-
 }
-
 
 Jail :: struct {
 	x, y:          f32,
@@ -165,10 +199,8 @@ main :: proc() {
 	ball.height = 10
 	ball.x = screen_width / 2
 	ball.y = screen_height / 3
-	ball.speed_x = 4
-	ball.speed_y = 5
-	ball.old_speed_x = ball.speed_x
-	ball.old_speed_y = ball.speed_y
+	ball.speed_x = BALL_SPEED_X
+	ball.speed_y = BALL_SPEED_Y
 
 	player.width = 35
 	player.height = 10

@@ -6,7 +6,8 @@ import rl "vendor:raylib"
 
 playerScore: i32 = 0
 lives: i32 = 5
-
+round_old: i32 = 0
+round: i32 = 0
 Ball :: struct {
 	x, y:             f32,
 	width, height:    f32,
@@ -18,21 +19,21 @@ Draw :: proc(b: Ball) {
 }
 
 Update :: proc(b: ^Ball) {
-	b.x += b.speed_x
-	b.y += b.speed_y
+	b.x += b.speed_x + 0.2 * f32(round + 1)
+	b.y += b.speed_y + 0.2 * f32(round)
 
 	if b.x + b.width >= f32(rl.GetScreenWidth()) || b.x - b.width <= 0 {
 		b.speed_x *= -1
 	}
 
 
-	if b.y + b.height >= f32(rl.GetScreenWidth()) {
+	if b.y + b.height >= f32(rl.GetScreenHeight()) {
 		lives -= 1
 		b.speed_x *= -1
 		ResetBall(&b^)
 	}
 	if b.y - b.height <= 0 {
-		playerScore += 1
+		round += 1
 
 	}
 }
@@ -72,7 +73,7 @@ Update_rec :: proc(p: ^Paddle) {
 		p.x = 0
 	}
 	if p.x + p.width >= f32(rl.GetScreenWidth()) {
-		p.x = f32(rl.GetScreenWidth()) - p.width
+		p.x = f32(rl.GetScreenWidth()) - p.width - 1
 	}
 }
 
@@ -129,10 +130,10 @@ restart: Reset_game
 main :: proc() {
 
 
-	screen_width :: 400
-	screen_height :: 400
+	screen_width :: 450
+	screen_height :: 500
 
-	rl.InitWindow(screen_width, screen_height, "Breakout 1976")
+	rl.InitWindow(screen_width, screen_height, "Breakout 1967 LOOP OF DEATH")
 	rl.SetTargetFPS(60)
 	defer rl.CloseWindow()
 	ball.width = 10
@@ -140,18 +141,18 @@ main :: proc() {
 	ball.x = screen_width / 2
 	ball.y = screen_height / 2
 	ball.speed_x = 4
-	ball.speed_y = 2
+	ball.speed_y = 4
 
-	player.width = 40
+	player.width = 25
 	player.height = 10
 	player.x = screen_width / 2 - 30
 	player.y = screen_height - 50
-	player.speed = 6
+	player.speed = 8
 
 	jail.height = 10
-	jail.width = 26
+	jail.width = 30
 	jail.x = 0
-	jail.y = 100
+	jail.y = 80
 	jail.active = true
 	jail.cor = {rl.RED, rl.ORANGE, rl.YELLOW, rl.DARKGREEN, rl.DARKBLUE, rl.PURPLE, rl.SKYBLUE}
 
@@ -171,7 +172,7 @@ main :: proc() {
 	for collum in 0 ..< 7 {
 		for size in 0 ..< 13 {
 			i := collum * 13 + size
-			block[i].x = f32(1 + size * (int(block[i].width) + 5))
+			block[i].x = f32(2 + size * (int(block[i].width) + 5))
 			block[i].y = f32(collum * int(block[i].y) / 5 + 40)
 		}
 	}
@@ -223,7 +224,21 @@ main :: proc() {
 				}
 			}
 		}
+		if round > round_old {
+			player = restart.player_reset
+			ball = restart.ball_reset
+			lives = restart.lives
+			playerScore = restart.playerScore
+			round_old = round
 
+			for i in 0 ..< len(block) {
+				if !block[i].active {
+					block[i].active = true
+				}
+			}
+
+		}
+		fmt.printf("%v", round)
 		rl.EndDrawing()
 	}
 }

@@ -8,6 +8,10 @@ playerScore: i32 = 0
 lives: i32 = 5
 round_old: i32 = 0
 round: i32 = 1
+
+
+Paddle_sound := rl.LoadSound("~/meu_jogo/jogo_2/assets/Audio/Blip.wav")
+
 Ball :: struct {
 	x, y:                                       f32,
 	width, height:                              f32,
@@ -18,7 +22,7 @@ Draw :: proc(b: Ball) {
 	rl.DrawRectangle(i32(b.x), i32(b.y), i32(b.width), i32(b.height), rl.WHITE)
 }
 
-Update :: proc(b: ^Ball) {
+Update :: proc(b: ^Ball, s: rl.Sound) {
 	b.x += b.speed_x + 0.2 * f32(round + 1)
 	b.y += b.speed_y + 0.2 * f32(round)
 
@@ -38,6 +42,7 @@ Update :: proc(b: ^Ball) {
 		ResetBall(&b^)
 	}
 	if b.y - b.height <= 0 {
+		rl.PlaySound(s)
 		round += 1
 
 	}
@@ -82,11 +87,12 @@ Update_rec :: proc(p: ^Paddle) {
 	}
 }
 
-Check :: proc(p: ^Paddle, b: ^Ball) {
+Check :: proc(p: ^Paddle, b: ^Ball, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{b.x, b.y, b.width, b.height},
 		rl.Rectangle{p.x, p.y, p.width, p.height},
 	) {
+		rl.PlaySound(s)
 		b.speed_y = b.old_speed_y
 		b.speed_y *= -1
 		b.y = p.y - b.height
@@ -94,7 +100,7 @@ Check :: proc(p: ^Paddle, b: ^Ball) {
 	}
 
 }
-Check_jail :: proc(p: ^Jail, b: ^Ball) {
+Check_jail :: proc(p: ^Jail, b: ^Ball, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{b.x, b.y, b.width, b.height},
 		rl.Rectangle{p.x, p.y, p.width, p.height},
@@ -102,6 +108,7 @@ Check_jail :: proc(p: ^Jail, b: ^Ball) {
 		b.speed_y *= -1
 		p.durability -= 1
 		if p.durability <= 0 {p.active = false
+			rl.PlaySound(s)
 			playerScore += 1}
 		lista := [2]f32{-1, 1}
 		ball.speed_y = ball.old_speed_y
@@ -140,14 +147,26 @@ main :: proc() {
 	screen_height :: 500
 
 	rl.InitWindow(screen_width, screen_height, "Breakout 1967 LOOP OF DEATH")
+	rl.InitAudioDevice()
 	rl.SetTargetFPS(60)
+
 	defer rl.CloseWindow()
+	defer rl.CloseAudioDevice()
+
+	paddle_sound := rl.LoadSound("jogo_2/assets/Audio/Blip.wav")
+	win_sound := rl.LoadSound("jogo_2/assets/Audio/Win_test.wav")
+	boom_sound := rl.LoadSound("jogo_2/assets/Audio/Boom.wav")
+
+	defer rl.UnloadSound(win_sound)
+	defer rl.UnloadSound(paddle_sound)
+	defer rl.UnloadSound(boom_sound)
+
 	ball.width = 10
 	ball.height = 10
 	ball.x = screen_width / 2
 	ball.y = screen_height / 2
 	ball.speed_x = 4
-	ball.speed_y = 15
+	ball.speed_y = 8
 	ball.old_speed_x = ball.speed_x
 	ball.old_speed_y = ball.speed_y
 
@@ -193,13 +212,14 @@ main :: proc() {
 
 		rl.DrawText(rl.TextFormat("%d", playerScore), 3 * screen_width / 4 - 20, 20, 20, rl.WHITE)
 
-		Update(&ball)
+
+		Update(&ball, win_sound)
 		Draw(ball)
-		Check(&player, &ball)
+		Check(&player, &ball, paddle_sound)
 
 		for i in 0 ..< len(block) {
 			if !block[i].active do continue
-			Check_jail(&block[i], &ball)
+			Check_jail(&block[i], &ball, boom_sound)
 		}
 
 		Update_rec(&player)
@@ -249,4 +269,5 @@ main :: proc() {
 		}
 		rl.EndDrawing()
 	}
+
 }

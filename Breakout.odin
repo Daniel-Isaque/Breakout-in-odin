@@ -170,11 +170,11 @@ main :: proc() {
 	ball.old_speed_x = ball.speed_x
 	ball.old_speed_y = ball.speed_y
 
-	player.width = 450
+	player.width = 30
 	player.height = 10
 	player.x = screen_width / 2 - 30
 	player.y = screen_height - 50
-	player.speed = 8
+	player.speed = 10
 
 	jail.height = 10
 	jail.width = 30

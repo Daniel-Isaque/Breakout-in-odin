@@ -51,7 +51,7 @@ Update :: proc(b: ^Ball, s: rl.Sound) {
 ResetBall :: proc(b: ^Ball) {
 
 	b.x = f32(rl.GetScreenWidth() / 2)
-	b.y = f32(rl.GetScreenHeight() / 2)
+	b.y = f32(rl.GetScreenHeight() / 3)
 
 	lista := [2]f32{-1, 1}
 
@@ -164,17 +164,17 @@ main :: proc() {
 	ball.width = 10
 	ball.height = 10
 	ball.x = screen_width / 2
-	ball.y = screen_height / 2
+	ball.y = screen_height / 3
 	ball.speed_x = 4
-	ball.speed_y = 8
+	ball.speed_y = 5
 	ball.old_speed_x = ball.speed_x
 	ball.old_speed_y = ball.speed_y
 
-	player.width = 30
+	player.width = 35
 	player.height = 10
 	player.x = screen_width / 2 - 30
 	player.y = screen_height - 50
-	player.speed = 10
+	player.speed = 12
 
 	jail.height = 10
 	jail.width = 30

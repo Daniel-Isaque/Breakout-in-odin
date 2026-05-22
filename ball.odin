@@ -27,17 +27,10 @@ Update :: proc(b: ^Ball, s: rl.Sound) {
 		b.speed_x = BALL_SPEED_X
 	}
 
-	if b.pos[1] >= f32(rl.GetScreenHeight()) {
-		lives -= 1
-		ResetBall(&b^)
-	}
-
 	// o que eh pra ser isso, porque sair da tela por cima te aumenta um round?
 	if b.pos[1] <= 0 {
 		rl.PlaySound(s)
-		// aqui voce deveria refletir pra baixo, mas como nao fez isso, nao sei se descomentar
-		// b.speed = BALL_SPEED_Y
-		round += 1
+		win_condition = true
 	}
 }
 
@@ -52,7 +45,7 @@ ResetBall :: proc(b: ^Ball) {
 	b.speed_x *= decision
 }
 
-GiveNewBall :: proc(balls: ^[dynamic]Ball) {
+GiveNewBall :: proc(balls: ^[dynamic]Ball, angle_offset: f32 = 0) {
 	is_default_spawn: bool = (len(balls) == 0)
 
 	// isso aqui quebra quando eu saio da tela por cima! consertar!
@@ -61,20 +54,11 @@ GiveNewBall :: proc(balls: ^[dynamic]Ball) {
 		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : balls[0].pos.y,
 	}
 
-	for &ball in balls {
-		ball.pos = spawn_position
-		ball.width = BALL_DEFAULT_WIDTH
-		ball.height = BALL_DEFAULT_HEIGHT
-		ball.speed_x = BALL_SPEED_X
-		ball.speed_y = BALL_SPEED_Y
-		return
-	}
-
 	new_ball: Ball = {
 		pos     = spawn_position,
 		width   = BALL_DEFAULT_WIDTH,
 		height  = BALL_DEFAULT_HEIGHT,
-		speed_x = BALL_SPEED_X,
+		speed_x = BALL_SPEED_X + angle_offset,
 		speed_y = BALL_SPEED_Y,
 	}
 

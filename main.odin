@@ -8,6 +8,8 @@ COLUMNS :: 7
 ROWS :: 13
 MAX_BLOCKS :: 91
 
+PADDLE_DEFAULT_SPAWN_X: f32 : 195
+PADDLE_DEFAULT_SPAWN_Y: f32 : 450
 BALL_DEFAULT_SPAWN_X: f32 : 225
 BALL_DEFAULT_SPAWN_Y: f32 : 166
 BALL_DEFAULT_WIDTH: f32 : 10
@@ -19,23 +21,38 @@ BALL_SPEED_Y: f32 : 5.0
 // Globals
 player_score: i32 = 0
 lives: i32 = 5
-round_old: i32 = 0
 round: i32 = 0
+win_condition: bool = false
 
-// FIXME: ¯\_(ツ)_/¯
-ResetGame :: struct {
-	paddle_reset:        Paddle,
-	block_reset:         Block,
-	player_score, lives: i32,
+ResetGame :: proc(pad: ^Paddle, ballArray: ^[dynamic]Ball, blocks: ^[MAX_BLOCKS]Block) {
+	//reset paddle
+	pad.x = PADDLE_DEFAULT_SPAWN_X
+	pad.y = PADDLE_DEFAULT_SPAWN_Y
+
+	// reset balls
+	clear(ballArray)
+	GiveNewBall(ballArray)
+
+	// reset blocks
+	for &block in blocks {
+		block.active = true
+		block.durability = 1
+	}
+
+	//globals
+	lives = 5
+	round = 0
+	player_score = 0
 }
+
 
 main :: proc() {
 
 	paddle: Paddle = {
-		width  = 70,
+		width  = 60,
 		height = 10,
-		x      = SCREEN_WIDTH / 2 - 30,
-		y      = SCREEN_HEIGHT - 50,
+		x      = PADDLE_DEFAULT_SPAWN_X,
+		y      = PADDLE_DEFAULT_SPAWN_Y,
 		speed  = 12,
 	}
 
@@ -46,13 +63,6 @@ main :: proc() {
 		y          = 80,
 		active     = true,
 		durability = 1,
-	}
-
-	restart: ResetGame = {
-		block_reset  = default_block,
-		paddle_reset = paddle,
-		player_score = 0,
-		lives        = 5,
 	}
 
 	ballArray: [dynamic]Ball = make([dynamic]Ball, 0, 32)
@@ -89,22 +99,23 @@ main :: proc() {
 
 	for !rl.WindowShouldClose() {
 
-		for i in 0 ..< len(blockArray) {
-			if !blockArray[i].active do continue
-			CheckBlocks(&blockArray[i], &ballArray[0], boom_sound)
-		}
-
-		Update(&ballArray[0], win_sound)
-
 		for i := len(ballArray) - 1; i >= 0; i -= 1 {
-			ball := &ballArray[i]
-			CheckPaddleBounces(&paddle, ball, paddle_sound)
-			if ball.pos.y > f32(SCREEN_HEIGHT) {
-				unordered_remove(&ballArray, i)
+			Update(&ballArray[i], win_sound)
+			CheckPaddleBounces(&paddle, &ballArray[i], paddle_sound)
+			for j in 0 ..< len(blockArray) {
+				if !blockArray[j].active do continue
+				CheckBlocks(&blockArray[j], &ballArray[i], boom_sound)
+			}
+			if ballArray[i].pos.y > SCREEN_HEIGHT {
+				unordered_remove_dynamic_array(&ballArray, i)
+				if len(ballArray) == 0 {
+					lives -= 1
+					GiveNewBall(&ballArray)
+				}
 			}
 		}
 
-		CheckPaddleBounces(&paddle, &ballArray[0], paddle_sound)
+
 		UpdatePaddle(&paddle)
 
 		if len(ballArray) == 0 && lives < 0 {
@@ -112,22 +123,22 @@ main :: proc() {
 		}
 
 		if lives <= 0 {
-			paddle = restart.paddle_reset
-			lives = restart.lives
-			player_score = restart.player_score
-
-			for i in 0 ..< len(blockArray) {
-				if !blockArray[i].active {
-					blockArray[i].active = true
-				}
-			}
+			ResetGame(&paddle, &ballArray, &blockArray)
 		}
 
-		if round > round_old {
-			paddle = restart.paddle_reset
-			lives = restart.lives
+		if win_condition {
+			win_condition = false
+			paddle.x = PADDLE_DEFAULT_SPAWN_X
+			paddle.y = PADDLE_DEFAULT_SPAWN_Y
+			lives = 5
+			clear(&ballArray)
 			GiveNewBall(&ballArray)
-			round_old = round
+			round += 1
+
+			clear(&ballArray)
+			for i in 0 ..< round + 1 {
+				GiveNewBall(&ballArray, f32(i) * 1.5 - f32(round) * 0.75)
+			}
 
 			for i in 0 ..< len(blockArray) {
 				if !blockArray[i].active {
@@ -137,13 +148,16 @@ main :: proc() {
 			}
 		}
 
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
 
 		rl.DrawText(rl.TextFormat("%d", lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 		rl.DrawText(rl.TextFormat("%d", player_score), 3 * SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 
-		Draw(ballArray[0])
+		for ball in ballArray {
+			Draw(ball)
+		}
 		DrawPaddle(paddle)
 
 		for column in 0 ..< COLUMNS {

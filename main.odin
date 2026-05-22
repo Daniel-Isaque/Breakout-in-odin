@@ -45,6 +45,13 @@ ResetGame :: proc(pad: ^Paddle, ballArray: ^[dynamic]Ball, blocks: ^[MAX_BLOCKS]
 	player_score = 0
 }
 
+// we need to centralize state at some point.
+/*GameState :: proc {
+	ball_array : [dynamic]Ball,
+	particle_array : [dynamic]Particle,
+	block_array : [MAX_BLOCKS]Block,
+	//...
+}*/
 
 main :: proc() {
 
@@ -65,7 +72,14 @@ main :: proc() {
 		durability = 1,
 	}
 
-	ballArray: [dynamic]Ball = make([dynamic]Ball, 0, 32)
+	ball_array: [dynamic]Ball = make([dynamic]Ball, 0, 32)
+	particle_array : [dynamic]Particle = make([dynamic]Particle, 0, 128)
+	
+	defer delete(ball_array)
+	defer delete(particle_array)
+	
+	block_array: [MAX_BLOCKS]Block
+	FillBlockArray(&block_array, default_block)
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout 1967 LOOP OF DEATH")
 	rl.InitAudioDevice()
@@ -82,48 +96,34 @@ main :: proc() {
 	defer rl.UnloadSound(paddle_sound)
 	defer rl.UnloadSound(boom_sound)
 
-	blockArray: [MAX_BLOCKS]Block
-	for &e in blockArray {
-		e = default_block
-	}
-
-	for column in 0 ..< COLUMNS {
-		for rows in 0 ..< ROWS {
-			i := column * ROWS + rows
-			blockArray[i].x = f32(2 + rows * (int(blockArray[i].width) + 5))
-			blockArray[i].y = f32(column * int(blockArray[i].y) / 5 + 40)
-		}
-	}
-
-	GiveNewBall(&ballArray)
+	GiveNewBall(&ball_array)
 
 	for !rl.WindowShouldClose() {
 
-		for i := len(ballArray) - 1; i >= 0; i -= 1 {
-			Update(&ballArray[i], win_sound)
-			CheckPaddleBounces(&paddle, &ballArray[i], paddle_sound)
-			for j in 0 ..< len(blockArray) {
-				if !blockArray[j].active do continue
-				CheckBlocks(&blockArray[j], &ballArray[i], boom_sound)
+		for i := len(ball_array) - 1; i >= 0; i -= 1 {
+			UpdateBall(&ball_array[i], win_sound)
+			CheckPaddleBounces(&paddle, &ball_array[i], paddle_sound)
+			for j in 0 ..< len(block_array) {
+				if !block_array[j].active do continue
+				CheckBlocks(&block_array[j], &ball_array[i], &particle_array, boom_sound)
 			}
-			if ballArray[i].pos.y > SCREEN_HEIGHT {
-				unordered_remove_dynamic_array(&ballArray, i)
-				if len(ballArray) == 0 {
+			if ball_array[i].pos.y > SCREEN_HEIGHT {
+				unordered_remove_dynamic_array(&ball_array, i)
+				if len(ball_array) == 0 {
 					lives -= 1
-					GiveNewBall(&ballArray)
+					GiveNewBall(&ball_array)
 				}
 			}
 		}
 
-
 		UpdatePaddle(&paddle)
 
-		if len(ballArray) == 0 && lives < 0 {
-			GiveNewBall(&ballArray)
+		if len(ball_array) == 0 && lives < 0 {
+			GiveNewBall(&ball_array)
 		}
 
 		if lives <= 0 {
-			ResetGame(&paddle, &ballArray, &blockArray)
+			ResetGame(&paddle, &ball_array, &block_array)
 		}
 
 		if win_condition {
@@ -131,23 +131,24 @@ main :: proc() {
 			paddle.x = PADDLE_DEFAULT_SPAWN_X
 			paddle.y = PADDLE_DEFAULT_SPAWN_Y
 			lives = 5
-			clear(&ballArray)
-			GiveNewBall(&ballArray)
+			clear(&ball_array)
+			GiveNewBall(&ball_array)
 			round += 1
 
-			clear(&ballArray)
+			clear(&ball_array)
 			for i in 0 ..< round + 1 {
-				GiveNewBall(&ballArray, f32(i) * 1.5 - f32(round) * 0.75)
+				GiveNewBall(&ball_array, f32(i) * 1.5 - f32(round) * 0.75)
 			}
 
-			for i in 0 ..< len(blockArray) {
-				if !blockArray[i].active {
-					blockArray[i].durability = 1 * round
-					blockArray[i].active = true
+			for i in 0 ..< len(block_array) {
+				if !block_array[i].active {
+					block_array[i].durability = 1 * round
+					block_array[i].active = true
 				}
 			}
 		}
 
+		UpdateParticles(&particle_array)
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
@@ -155,25 +156,14 @@ main :: proc() {
 		rl.DrawText(rl.TextFormat("%d", lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 		rl.DrawText(rl.TextFormat("%d", player_score), 3 * SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 
-		for ball in ballArray {
-			Draw(ball)
+		for ball in ball_array {
+			DrawBall(ball)
 		}
+		
 		DrawPaddle(paddle)
+		DrawBlocks(&block_array)
+		DrawParticles(&particle_array)
 
-		for column in 0 ..< COLUMNS {
-			for rows in 0 ..< ROWS {
-				i := column * ROWS + rows
-				if blockArray[i].active == true {
-					rl.DrawRectangle(
-						i32(blockArray[i].x),
-						i32(blockArray[i].y),
-						i32(blockArray[i].width),
-						i32(blockArray[i].height),
-						BlockColors[column],
-					)
-				}
-			}
-		}
 		rl.EndDrawing()
 	}
 }

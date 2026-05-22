@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import "core:math/rand"
 import rl "vendor:raylib"
 
@@ -177,9 +176,10 @@ Reset_game :: struct {
 GiveNewBall :: proc(balls: ^[dynamic]Ball, slot: i32) {
 	is_default_spawn: bool = (len(balls) == 0)
 
+	// isso aqui quebra quando eu saio da tela por cima! consertar!
 	spawn_position: [2]f32 = {
-		is_default_spawn ? BALL_DEFAULT_SPAWN_X : balls[slot].pos[0],
-		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : balls[slot].pos[1],
+		is_default_spawn ? BALL_DEFAULT_SPAWN_X : balls[slot].pos.x,
+		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : balls[slot].pos.y,
 	}
 
 	for &ball in balls {
@@ -193,6 +193,7 @@ GiveNewBall :: proc(balls: ^[dynamic]Ball, slot: i32) {
 			return
 		}
 	}
+
 	new_ball: Ball = {
 		pos     = spawn_position,
 		active  = true,
@@ -204,13 +205,13 @@ GiveNewBall :: proc(balls: ^[dynamic]Ball, slot: i32) {
 
 	append(balls, new_ball)
 }
+
 block: Ball
 player: Paddle
 jail: Jail
 restart: Reset_game
 main :: proc() {
-	block.pos = {BALL_DEFAULT_SPAWN_X, BALL_SPEED_Y}
-	block.width = 10
+	block.pos = {BALL_DEFAULT_SPAWN_X, BALL_DEFAULT_SPAWN_Y}
 	block.height = 10
 	block.active = true
 	block.speed_x = BALL_SPEED_X
@@ -228,9 +229,9 @@ main :: proc() {
 	defer rl.CloseWindow()
 	defer rl.CloseAudioDevice()
 
-	paddle_sound := rl.LoadSound("jogo_2/assets/Audio/Blip.wav")
-	win_sound := rl.LoadSound("jogo_2/assets/Audio/Win_test.wav")
-	boom_sound := rl.LoadSound("jogo_2/assets/Audio/Boom.wav")
+	paddle_sound := rl.LoadSound("assets/Audio/Blip.wav")
+	win_sound := rl.LoadSound("assets/Audio/Win_test.wav")
+	boom_sound := rl.LoadSound("assets/Audio/Boom.wav")
 
 	defer rl.UnloadSound(win_sound)
 	defer rl.UnloadSound(paddle_sound)

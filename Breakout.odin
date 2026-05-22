@@ -15,7 +15,6 @@ BALL_DEFAULT_HEIGHT: f32 : 10
 BALL_SPEED_X: f32 : 4.0
 BALL_SPEED_Y: f32 : 5.0
 
-
 Ball :: struct {
 	pos:              [2]f32,
 	width, height:    f32,
@@ -173,13 +172,13 @@ Reset_game :: struct {
 	playerScore, lives: i32,
 }
 
-GiveNewBall :: proc(balls: ^[dynamic]Ball, slot: i32) {
+GiveNewBall :: proc(balls: ^[dynamic]Ball) {
 	is_default_spawn: bool = (len(balls) == 0)
 
 	// isso aqui quebra quando eu saio da tela por cima! consertar!
 	spawn_position: [2]f32 = {
-		is_default_spawn ? BALL_DEFAULT_SPAWN_X : balls[slot].pos.x,
-		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : balls[slot].pos.y,
+		is_default_spawn ? BALL_DEFAULT_SPAWN_X : balls[0].pos.x,
+		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : balls[0].pos.y,
 	}
 
 	for &ball in balls {
@@ -237,7 +236,7 @@ main :: proc() {
 	defer rl.UnloadSound(paddle_sound)
 	defer rl.UnloadSound(boom_sound)
 
-	player.width = 35
+	player.width = 70
 	player.height = 10
 	player.x = screen_width / 2 - 30
 	player.y = screen_height - 50
@@ -271,7 +270,7 @@ main :: proc() {
 	}
 
 
-	GiveNewBall(&ball, i32(0))
+	GiveNewBall(&ball)
 	for !rl.WindowShouldClose() {
 
 		rl.BeginDrawing()
@@ -316,7 +315,7 @@ main :: proc() {
 			}
 		}
 		if len(ball) == 0 && lives < 0 {
-			GiveNewBall(&ball, 0)
+			GiveNewBall(&ball)
 		}
 		if lives <= 0 {
 			player = restart.player_reset
@@ -332,7 +331,7 @@ main :: proc() {
 		if round > round_old {
 			player = restart.player_reset
 			lives = restart.lives
-			GiveNewBall(&ball, round)
+			GiveNewBall(&ball)
 			round_old = round
 
 			for i in 0 ..< len(block) {

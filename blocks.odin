@@ -17,26 +17,70 @@ Block :: struct {
 	width, height: f32,
 	active:        bool,
 	durability:    i32,
+	color_id: int,
 }
 
-CheckBlocks :: proc(p: ^Block, b: ^Ball, s: rl.Sound) {
+CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array : ^[dynamic]Particle, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
-		rl.Rectangle{b.pos.x, b.pos.y, b.width, b.height},
-		rl.Rectangle{p.x, p.y, p.width, p.height},
+		rl.Rectangle{ball.pos.x, ball.pos.y, ball.width, ball.height},
+		rl.Rectangle{block.x, block.y, block.width, block.height},
 	) {
 
-		p.durability -= 1
-		if p.durability <= 0 {
-			p.active = false
+		block.durability -= 1
+		if block.durability <= 0 {
+			block.active = false
 			rl.PlaySound(s)
+
+			CreateRadialParticleExplosion(particle_array, ParticleDto{
+				pos = [2]f32{block.x, block.y},
+				scale = {4, 4},
+				speed = 3,
+				color = BlockColors[block.color_id],
+				lifetime = 60, // in frames
+				shrink = true,
+				shrink_factor = 0.05,
+				shape = .RECTANGLE
+			}, 10, true)
+
 			player_score += 1
 		}
 
-		// mais simples. se quiser reimplementar o bgl, deixei comentado ali a versao velha.
-		if b.speed_y < 0 {
-			b.speed_y = BALL_SPEED_Y
+		if ball.speed_y < 0 {
+			ball.speed_y = BALL_SPEED_Y
 		} else {
-			b.speed_y = -BALL_SPEED_Y
+			ball.speed_y = -BALL_SPEED_Y
+		}
+	}
+}
+
+DrawBlocks :: proc(block_array : ^[MAX_BLOCKS]Block) {
+	for column in 0 ..< COLUMNS {
+		for rows in 0 ..< ROWS {
+			i := column * ROWS + rows
+			if block_array[i].active == true {
+				rl.DrawRectangle(
+					i32(block_array[i].x),
+					i32(block_array[i].y),
+					i32(block_array[i].width),
+					i32(block_array[i].height),
+					BlockColors[column],
+				)
+			}
+		}
+	}
+}
+
+FillBlockArray :: proc(block_array : ^[MAX_BLOCKS]Block, default_block : Block) {
+	for &e in block_array {
+		e = default_block
+	}
+
+	for column in 0 ..< COLUMNS {
+		for rows in 0 ..< ROWS {
+			i := column * ROWS + rows
+			block_array[i].color_id = column // set it here to make it easier to color explosions.
+			block_array[i].x = f32(2 + rows * (int(block_array[i].width) + 5))
+			block_array[i].y = f32(column * int(block_array[i].y) / 5 + 40)
 		}
 	}
 }

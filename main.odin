@@ -108,7 +108,8 @@ main :: proc() {
 	for !rl.WindowShouldClose() {
 
 		//loop for checking any trauma alteraiont make ScreenShake(do something)
-		if trauma > 0 {
+		// re: you don't need to run this based on a branch.
+		/*if trauma > 0 {
 			shake := trauma * trauma // calculate first
 			game_camera.offset = {
 				SCREEN_WIDTH / 2 + 10 * shake * random_range(-1, 1),
@@ -118,7 +119,7 @@ main :: proc() {
 			if trauma < 0 do trauma = 0
 		} else {
 			game_camera.offset = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}
-		}
+		}*/
 
 		for i := len(ball_array) - 1; i >= 0; i -= 1 {
 			UpdateBall(&ball_array[i], win_sound)
@@ -169,7 +170,7 @@ main :: proc() {
 		}
 
 		UpdateParticles(&particle_array)
-
+		UpdateScreenshake(&game_camera)
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)

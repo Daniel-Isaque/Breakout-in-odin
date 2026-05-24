@@ -25,11 +25,12 @@ CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array: ^[dynamic]Partic
 		rl.Rectangle{ball.pos.x, ball.pos.y, ball.width, ball.height},
 		rl.Rectangle{block.x, block.y, block.width, block.height},
 	) {
-		TriggerShake(0.8)
+		//		TriggerShake(0.8)
+		AddShake(6)
 		block.durability -= 1
 		if block.durability <= 0 {
 			block.active = false
-			rl.PlaySound(s)
+			PlaySoundWithRandomPitch(s, 0.8, 1.2)
 			CreateRadialParticleExplosion(
 				particle_array,
 				ParticleDto {

@@ -19,9 +19,9 @@ FromPolarRad :: #force_inline proc(speed: f32, angle_radians: f32) -> [2]f32 {
 	return [2]f32{math.cos(angle_radians) * speed, math.sin(angle_radians) * speed}
 }
 
-// this should theoretically work but it doesn't seem to.
+
 PlaySoundWithRandomPitch :: proc(sound: rl.Sound, min: f32, max: f32) {
-	rl.SetSoundPitch(sound, random_range(min, max))
-	rl.PlaySound(sound)
-	rl.SetSoundPitch(sound, 1.0) // i'd like not to do this.
+	sound_copy := sound
+	rl.SetSoundPitch(sound_copy, random_range(min, max))
+	rl.PlaySound(sound_copy)
 }

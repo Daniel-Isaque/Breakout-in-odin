@@ -55,6 +55,13 @@ ResetGame :: proc(pad: ^Paddle, ballArray: ^[dynamic]Ball, blocks: ^[MAX_BLOCKS]
 
 main :: proc() {
 
+	game_camera = {
+		offset   = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
+		target   = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2},
+		rotation = 0,
+		zoom     = 1,
+	}
+
 	paddle: Paddle = {
 		width  = 60,
 		height = 10,
@@ -73,11 +80,11 @@ main :: proc() {
 	}
 
 	ball_array: [dynamic]Ball = make([dynamic]Ball, 0, 32)
-	particle_array : [dynamic]Particle = make([dynamic]Particle, 0, 128)
-	
+	particle_array: [dynamic]Particle = make([dynamic]Particle, 0, 128)
+
 	defer delete(ball_array)
 	defer delete(particle_array)
-	
+
 	block_array: [MAX_BLOCKS]Block
 	FillBlockArray(&block_array, default_block)
 
@@ -99,6 +106,19 @@ main :: proc() {
 	GiveNewBall(&ball_array)
 
 	for !rl.WindowShouldClose() {
+
+		//loop for checking any trauma alteraiont make ScreenShake(do something)
+		if trauma > 0 {
+			shake := trauma * trauma // calculate first
+			game_camera.offset = {
+				SCREEN_WIDTH / 2 + 10 * shake * random_range(-1, 1),
+				SCREEN_HEIGHT / 2 + 10 * shake * random_range(-1, 1),
+			}
+			trauma -= (1.0 / 1) * rl.GetFrameTime() // reduce after
+			if trauma < 0 do trauma = 0
+		} else {
+			game_camera.offset = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}
+		}
 
 		for i := len(ball_array) - 1; i >= 0; i -= 1 {
 			UpdateBall(&ball_array[i], win_sound)
@@ -150,19 +170,24 @@ main :: proc() {
 
 		UpdateParticles(&particle_array)
 
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
 
 		rl.DrawText(rl.TextFormat("%d", lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 		rl.DrawText(rl.TextFormat("%d", player_score), 3 * SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 
+		rl.BeginMode2D(game_camera)
+
 		for ball in ball_array {
 			DrawBall(ball)
 		}
-		
+
 		DrawPaddle(paddle)
 		DrawBlocks(&block_array)
 		DrawParticles(&particle_array)
+
+		rl.EndMode2D()
 
 		rl.EndDrawing()
 	}

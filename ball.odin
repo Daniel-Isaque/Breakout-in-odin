@@ -20,11 +20,12 @@ UpdateBall :: proc(b: ^Ball, s: rl.Sound) {
 	if i32(b.pos[0] + b.width) >= rl.GetScreenWidth() {
 		b.pos[0] = f32(rl.GetScreenWidth()) - b.width
 		b.speed_x = -BALL_SPEED_X
-
+		TriggerShake(0.5)
 	}
 	if b.pos[0] <= 0 {
 		b.pos[0] = 0
 		b.speed_x = BALL_SPEED_X
+		TriggerShake(0.5)
 	}
 
 	// o que eh pra ser isso, porque sair da tela por cima te aumenta um round?

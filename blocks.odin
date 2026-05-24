@@ -17,30 +17,35 @@ Block :: struct {
 	width, height: f32,
 	active:        bool,
 	durability:    i32,
-	color_id: int,
+	color_id:      int,
 }
 
-CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array : ^[dynamic]Particle, s: rl.Sound) {
+CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array: ^[dynamic]Particle, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{ball.pos.x, ball.pos.y, ball.width, ball.height},
 		rl.Rectangle{block.x, block.y, block.width, block.height},
 	) {
-
+		TriggerShake(0.8)
 		block.durability -= 1
 		if block.durability <= 0 {
 			block.active = false
 			rl.PlaySound(s)
+			CreateRadialParticleExplosion(
+				particle_array,
+				ParticleDto {
+					pos           = [2]f32{block.x, block.y},
+					scale         = {8, 8},
+					speed         = 2,
+					color         = BlockColors[block.color_id],
+					lifetime      = 45, // in frames
+					shrink        = true,
+					shrink_factor = 0.03,
+					shape         = .RECTANGLE,
+				},
+				10,
+				true,
+			)
 
-			CreateRadialParticleExplosion(particle_array, ParticleDto{
-				pos = [2]f32{block.x, block.y},
-				scale = {4, 4},
-				speed = 3,
-				color = BlockColors[block.color_id],
-				lifetime = 60, // in frames
-				shrink = true,
-				shrink_factor = 0.05,
-				shape = .RECTANGLE
-			}, 10, true)
 
 			player_score += 1
 		}
@@ -53,7 +58,7 @@ CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array : ^[dynamic]Parti
 	}
 }
 
-DrawBlocks :: proc(block_array : ^[MAX_BLOCKS]Block) {
+DrawBlocks :: proc(block_array: ^[MAX_BLOCKS]Block) {
 	for column in 0 ..< COLUMNS {
 		for rows in 0 ..< ROWS {
 			i := column * ROWS + rows
@@ -70,7 +75,7 @@ DrawBlocks :: proc(block_array : ^[MAX_BLOCKS]Block) {
 	}
 }
 
-FillBlockArray :: proc(block_array : ^[MAX_BLOCKS]Block, default_block : Block) {
+FillBlockArray :: proc(block_array: ^[MAX_BLOCKS]Block, default_block: Block) {
 	for &e in block_array {
 		e = default_block
 	}

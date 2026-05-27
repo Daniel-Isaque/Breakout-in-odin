@@ -1,7 +1,7 @@
 package breakout
 
-import rl "vendor:raylib"
 import "core:math"
+import rl "vendor:raylib"
 
 ParticleShapes :: enum {
 	RECTANGLE,
@@ -9,61 +9,66 @@ ParticleShapes :: enum {
 }
 
 Particle :: struct {
-	pos : [2]f32,
-	scale: [2]f32,
-	velocity : [2]f32,
-	color : rl.Color,
-	lifetime : i32 , // in frames
-	shrink : bool,
-	shrink_factor : f32,
-	shape : ParticleShapes,
+	pos:           [2]f32,
+	scale:         [2]f32,
+	velocity:      [2]f32,
+	color:         rl.Color,
+	lifetime:      i32, // in frames
+	shrink:        bool,
+	shrink_factor: f32,
+	shape:         ParticleShapes,
 }
 
 ParticleDto :: struct {
-	pos : [2]f32,
-	scale: [2]f32,
-	speed : f32,
-	angle : f32,
-	color : rl.Color,
-	lifetime : i32 , // in frames
-	shrink : bool,
-	shrink_factor : f32,
-	shape : ParticleShapes,
+	pos:           [2]f32,
+	scale:         [2]f32,
+	speed:         f32,
+	angle:         f32,
+	color:         rl.Color,
+	lifetime:      i32, // in frames
+	shrink:        bool,
+	shrink_factor: f32,
+	shape:         ParticleShapes,
 }
 
-CreateParticleDeg :: proc(particle_array : ^[dynamic]Particle, template : ParticleDto) {
-	particle := Particle{
-		pos = template.pos,
-		scale = template.scale,
-		velocity = FromPolarDeg(template.speed, template.angle),
-		color = template.color,
-		lifetime = template.lifetime,
-		shrink = template.shrink,
+CreateParticleDeg :: proc(particle_array: ^[dynamic]Particle, template: ParticleDto) {
+	particle := Particle {
+		pos           = template.pos,
+		scale         = template.scale,
+		velocity      = FromPolarDeg(template.speed, template.angle),
+		color         = template.color,
+		lifetime      = template.lifetime,
+		shrink        = template.shrink,
 		shrink_factor = template.shrink_factor,
-		shape = template.shape
+		shape         = template.shape,
 	}
 	append(particle_array, particle)
 }
 
-CreateParticleRad :: proc(particle_array : ^[dynamic]Particle, template : ParticleDto) {
-	particle := Particle{
-		pos = template.pos,
-		scale = template.scale,
-		velocity = FromPolarRad(template.speed, template.angle),
-		color = template.color,
-		lifetime = template.lifetime,
-		shrink = template.shrink,
+CreateParticleRad :: proc(particle_array: ^[dynamic]Particle, template: ParticleDto) {
+	particle := Particle {
+		pos           = template.pos,
+		scale         = template.scale,
+		velocity      = FromPolarRad(template.speed, template.angle),
+		color         = template.color,
+		lifetime      = template.lifetime,
+		shrink        = template.shrink,
 		shrink_factor = template.shrink_factor,
-		shape = template.shape
+		shape         = template.shape,
 	}
 	append(particle_array, particle)
 }
 
 // angle from the passed dto parameter is ignored here because why would it be used.
-CreateRadialParticleExplosion :: proc(particle_array : ^[dynamic]Particle, template : ParticleDto, n : int, variation : bool) {
-	angle_step : f32 = f32(math.TAU) / f32(n)
-	for i in 0..<n {
-		angle : f32 = f32(i) * angle_step
+CreateRadialParticleExplosion :: proc(
+	particle_array: ^[dynamic]Particle,
+	template: ParticleDto,
+	n: int,
+	variation: bool,
+) {
+	angle_step: f32 = f32(math.TAU) / f32(n)
+	for i in 0 ..< n {
+		angle: f32 = f32(i) * angle_step
 		if variation do angle += random_range(-2.0, 2.0)
 
 		particle_dto := template
@@ -72,10 +77,10 @@ CreateRadialParticleExplosion :: proc(particle_array : ^[dynamic]Particle, templ
 	}
 }
 
-UpdateParticles :: proc(particle_array : ^[dynamic]Particle) {
-	for i := len(particle_array) - 1; i > 0; i-=1 {
+UpdateParticles :: proc(particle_array: ^[dynamic]Particle) {
+	for i := len(particle_array) - 1; i >= 0; i -= 1 {
 		particle := &particle_array[i]
-		
+
 		particle.lifetime -= 1
 		if particle.lifetime <= 0 {
 			unordered_remove_dynamic_array(particle_array, i)
@@ -94,13 +99,20 @@ UpdateParticles :: proc(particle_array : ^[dynamic]Particle) {
 	}
 }
 
-DrawParticles :: proc(particleArray : ^[dynamic]Particle) {
+DrawParticles :: proc(particleArray: ^[dynamic]Particle) {
 	for &particle in particleArray {
-		switch(particle.shape) {
-			case .RECTANGLE:
-				rl.DrawRectangleV(particle.pos, particle.scale, particle.color)
-			case .CIRCLE:
-				rl.DrawEllipse(i32(particle.pos.x), i32(particle.pos.y), particle.scale.x, particle.scale.y, particle.color)
+		switch (particle.shape) {
+		case .RECTANGLE:
+			rl.DrawRectangleV(particle.pos, particle.scale, particle.color)
+		case .CIRCLE:
+			rl.DrawEllipse(
+				i32(particle.pos.x),
+				i32(particle.pos.y),
+				particle.scale.x,
+				particle.scale.y,
+				particle.color,
+			)
 		}
 	}
 }
+

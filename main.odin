@@ -138,8 +138,6 @@ main :: proc() {
 			paddle.x = PADDLE_DEFAULT_SPAWN_X
 			paddle.y = PADDLE_DEFAULT_SPAWN_Y
 			world.lives = 5
-			rat.clear_sparse_set(&world.balls)
-			GiveNewBall(&world)
 			world.round += 1
 
 			rat.clear_sparse_set(&world.balls)

@@ -1,5 +1,6 @@
 package breakout
 
+import rat "rat-engine"
 import rl "vendor:raylib"
 
 SCREEN_WIDTH :: 450
@@ -18,40 +19,26 @@ BALL_HEIGHT: i32 : 10
 BALL_SPEED_X: f32 : 4.0
 BALL_SPEED_Y: f32 : 5.0
 
-// Globals
-player_score: i32 = 0
-lives: i32 = 5
-round: i32 = 0
-win_condition: bool = false
-
-ResetGame :: proc(pad: ^Paddle, ballArray: ^[dynamic]Ball, blocks: ^[MAX_BLOCKS]Block) {
+ResetGame :: proc(pad: ^Paddle, world: ^World) {
 	//reset paddle
 	pad.x = PADDLE_DEFAULT_SPAWN_X
 	pad.y = PADDLE_DEFAULT_SPAWN_Y
 
 	// reset balls
-	clear(ballArray)
-	GiveNewBall(ballArray)
+	rat.clear_sparse_set(&world.balls)
+	GiveNewBall(world)
 
 	// reset blocks
-	for &block in blocks {
+	for &block in world.blocks {
 		block.active = true
 		block.durability = 1
 	}
 
 	//globals
-	lives = 5
-	round = 0
-	player_score = 0
+	world.lives = 5
+	world.round = 0
+	world.player_score = 0
 }
-
-// we need to centralize state at some point.
-/*GameState :: proc {
-	ball_array : [dynamic]Ball,
-	particle_array : [dynamic]Particle,
-	block_array : [MAX_BLOCKS]Block,
-	//...
-}*/
 
 main :: proc() {
 
@@ -79,14 +66,10 @@ main :: proc() {
 		durability = 1,
 	}
 
-	ball_array: [dynamic]Ball = make([dynamic]Ball, 0, 32)
-	particle_array: [dynamic]Particle = make([dynamic]Particle, 0, 128)
+	world := create_world()
+	defer delete_world(&world)
 
-	defer delete(ball_array)
-	defer delete(particle_array)
-
-	block_array: [MAX_BLOCKS]Block
-	FillBlockArray(&block_array, default_block)
+	FillBlockArray(&world.blocks, default_block)
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout 1967 LOOP OF DEATH")
 	rl.InitAudioDevice()
@@ -103,7 +86,7 @@ main :: proc() {
 	defer rl.UnloadSound(paddle_sound)
 	defer rl.UnloadSound(boom_sound)
 
-	GiveNewBall(&ball_array)
+	GiveNewBall(&world)
 
 	for !rl.WindowShouldClose() {
 
@@ -121,72 +104,80 @@ main :: proc() {
 			game_camera.offset = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}
 		}*/
 
-		for i := len(ball_array) - 1; i >= 0; i -= 1 {
-			UpdateBall(&ball_array[i], win_sound)
-			CheckPaddleBounces(&paddle, &ball_array[i], paddle_sound)
-			for j in 0 ..< len(block_array) {
-				if !block_array[j].active do continue
-				CheckBlocks(&block_array[j], &ball_array[i], &particle_array, boom_sound)
+		for i := int(world.balls.count) - 1; i >= 0; i -= 1 {
+			id := world.balls.dense[i]
+			ball := &world.balls.data[i]
+
+			UpdateBall(&world, ball, win_sound)
+			CheckPaddleBounces(&paddle, ball, &world, paddle_sound)
+			for j in 0 ..< len(world.blocks) {
+				if !world.blocks[j].active do continue
+				CheckBlocks(&world, &world.blocks[j], ball, boom_sound)
 			}
-			if ball_array[i].pos.y > SCREEN_HEIGHT {
-				unordered_remove_dynamic_array(&ball_array, i)
-				if len(ball_array) == 0 {
-					lives -= 1
-					GiveNewBall(&ball_array)
+			if ball.pos.y > SCREEN_HEIGHT {
+				rat.remove(&world.balls, id)
+				if world.balls.count == 0 {
+					world.lives -= 1
+					GiveNewBall(&world)
 				}
 			}
 		}
 
+		rat.UpdateTimers(&world.timers)
 		UpdatePaddle(&paddle)
 
-		if len(ball_array) == 0 && lives < 0 {
-			GiveNewBall(&ball_array)
+		if world.balls.count == 0 && world.lives < 0 {
+			GiveNewBall(&world)
 		}
 
-		if lives <= 0 {
-			ResetGame(&paddle, &ball_array, &block_array)
+		if world.lives <= 0 {
+			ResetGame(&paddle, &world)
 		}
 
-		if win_condition {
-			win_condition = false
+		if world.win_condition {
+			world.win_condition = false
 			paddle.x = PADDLE_DEFAULT_SPAWN_X
 			paddle.y = PADDLE_DEFAULT_SPAWN_Y
-			lives = 5
-			clear(&ball_array)
-			GiveNewBall(&ball_array)
-			round += 1
+			world.lives = 5
+			world.round += 1
 
-			clear(&ball_array)
-			for i in 0 ..< round + 1 {
-				GiveNewBall(&ball_array, f32(i) * 1.5 - f32(round) * 0.75)
+			rat.clear_sparse_set(&world.balls)
+			for i in 0 ..< world.round + 1 {
+				GiveNewBall(&world, f32(i) * 1.5 - f32(world.round) * 0.75)
 			}
 
-			for i in 0 ..< len(block_array) {
-				if !block_array[i].active {
-					block_array[i].durability = 1 * round
-					block_array[i].active = true
+			for i in 0 ..< len(world.blocks) {
+				if !world.blocks[i].active {
+					world.blocks[i].durability = 1 * world.round
+					world.blocks[i].active = true
 				}
 			}
 		}
 
-		UpdateParticles(&particle_array)
+		UpdateParticles(&world.particles)
 		UpdateScreenshake(&game_camera)
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.BLACK)
 
-		rl.DrawText(rl.TextFormat("%d", lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
-		rl.DrawText(rl.TextFormat("%d", player_score), 3 * SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
+		rl.DrawText(rl.TextFormat("%d", world.lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
+		rl.DrawText(
+			rl.TextFormat("%d", world.player_score),
+			3 * SCREEN_WIDTH / 4 - 20,
+			20,
+			20,
+			rl.WHITE,
+		)
 
 		rl.BeginMode2D(game_camera)
 
-		for ball in ball_array {
-			DrawBall(ball)
+		for i in 0 ..< world.balls.count {
+			DrawBall(world.balls.data[i])
 		}
 
 		DrawPaddle(paddle)
-		DrawBlocks(&block_array)
-		DrawParticles(&particle_array)
+		DrawBlocks(world.blocks)
+		DrawParticles(&world.particles)
 
 		rl.EndMode2D()
 

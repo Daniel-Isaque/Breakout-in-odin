@@ -28,7 +28,7 @@ UpdatePaddle :: proc(p: ^Paddle) {
 	}
 }
 
-CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, s: rl.Sound) {
+CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{b.pos[0], b.pos[1], b.width, b.height},
 		rl.Rectangle{p.x, p.y, p.width, p.height},
@@ -41,6 +41,7 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, s: rl.Sound) {
 			return
 		}
 
+		SquashBall(world, b.id)
 		rl.PlaySound(s)
 
 		b.pos.y = p.y - b.height

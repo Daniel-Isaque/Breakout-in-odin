@@ -109,7 +109,7 @@ main :: proc() {
 			ball := &world.balls.data[i]
 
 			UpdateBall(&world, ball, win_sound)
-			CheckPaddleBounces(&paddle, ball, paddle_sound)
+			CheckPaddleBounces(&paddle, ball, &world, paddle_sound)
 			for j in 0 ..< len(world.blocks) {
 				if !world.blocks[j].active do continue
 				CheckBlocks(&world, &world.blocks[j], ball, boom_sound)
@@ -123,6 +123,7 @@ main :: proc() {
 			}
 		}
 
+		rat.UpdateTimers(&world.timers)
 		UpdatePaddle(&paddle)
 
 		if world.balls.count == 0 && world.lives < 0 {

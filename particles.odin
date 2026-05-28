@@ -115,4 +115,3 @@ DrawParticles :: proc(particleArray: ^[dynamic]Particle) {
 		}
 	}
 }
-

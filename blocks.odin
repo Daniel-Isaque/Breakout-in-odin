@@ -20,7 +20,7 @@ Block :: struct {
 	color_id:      int,
 }
 
-CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array: ^[dynamic]Particle, s: rl.Sound) {
+CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
 		rl.Rectangle{ball.pos.x, ball.pos.y, ball.width, ball.height},
 		rl.Rectangle{block.x, block.y, block.width, block.height},
@@ -32,7 +32,7 @@ CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array: ^[dynamic]Partic
 			block.active = false
 			PlaySoundWithRandomPitch(s, 0.8, 1.2)
 			CreateRadialParticleExplosion(
-				particle_array,
+				&world.particles,
 				ParticleDto {
 					pos           = [2]f32{block.x, block.y},
 					scale         = {8, 8},
@@ -48,7 +48,7 @@ CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array: ^[dynamic]Partic
 			)
 
 
-			player_score += 1
+			world.player_score += 1
 		}
 
 		if ball.speed_y < 0 {
@@ -59,7 +59,7 @@ CheckBlocks :: proc(block: ^Block, ball: ^Ball, particle_array: ^[dynamic]Partic
 	}
 }
 
-DrawBlocks :: proc(block_array: ^[MAX_BLOCKS]Block) {
+DrawBlocks :: proc(block_array: []Block) {
 	for column in 0 ..< COLUMNS {
 		for rows in 0 ..< ROWS {
 			i := column * ROWS + rows
@@ -76,7 +76,7 @@ DrawBlocks :: proc(block_array: ^[MAX_BLOCKS]Block) {
 	}
 }
 
-FillBlockArray :: proc(block_array: ^[MAX_BLOCKS]Block, default_block: Block) {
+FillBlockArray :: proc(block_array: ^[]Block, default_block: Block) {
 	for &e in block_array {
 		e = default_block
 	}

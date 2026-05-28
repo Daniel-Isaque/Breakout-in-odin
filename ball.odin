@@ -1,5 +1,6 @@
 package breakout
 
+import rat "rat-engine"
 import "core:math/rand"
 import rl "vendor:raylib"
 
@@ -13,9 +14,9 @@ DrawBall :: proc(b: Ball) {
 	rl.DrawRectangle(i32(b.pos[0]), i32(b.pos[1]), i32(b.width), i32(b.height), rl.WHITE)
 }
 
-UpdateBall :: proc(b: ^Ball, s: rl.Sound) {
-	b.pos[0] += b.speed_x + 0.2 * f32(round + 1)
-	b.pos[1] += b.speed_y + 0.2 * f32(round)
+UpdateBall :: proc(world: ^World, b: ^Ball, s: rl.Sound) {
+	b.pos[0] += b.speed_x + 0.2 * f32(world.round + 1)
+	b.pos[1] += b.speed_y + 0.2 * f32(world.round)
 
 	if i32(b.pos[0] + b.width) >= rl.GetScreenWidth() {
 		b.pos[0] = f32(rl.GetScreenWidth()) - b.width
@@ -33,7 +34,7 @@ UpdateBall :: proc(b: ^Ball, s: rl.Sound) {
 	// o que eh pra ser isso, porque sair da tela por cima te aumenta um round?
 	if b.pos[1] <= 0 {
 		rl.PlaySound(s)
-		win_condition = true
+		world.win_condition = true
 	}
 }
 
@@ -48,13 +49,15 @@ ResetBall :: proc(b: ^Ball) {
 	b.speed_x *= decision
 }
 
-GiveNewBall :: proc(ballArray: ^[dynamic]Ball, angle_offset: f32 = 0) {
-	is_default_spawn: bool = (len(ballArray) == 0)
+GiveNewBall :: proc(world: ^World, angle_offset: f32 = 0) {
+	id := create_object(world)
+
+	is_default_spawn: bool = (world.balls.count == 0)
 
 	// isso aqui quebra quando eu saio da tela por cima! consertar!
 	spawn_position: [2]f32 = {
-		is_default_spawn ? BALL_DEFAULT_SPAWN_X : ballArray[0].pos.x,
-		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : ballArray[0].pos.y,
+		is_default_spawn ? BALL_DEFAULT_SPAWN_X : world.balls.data[0].pos.x,
+		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : world.balls.data[0].pos.y,
 	}
 
 	new_ball: Ball = {
@@ -65,5 +68,5 @@ GiveNewBall :: proc(ballArray: ^[dynamic]Ball, angle_offset: f32 = 0) {
 		speed_y = BALL_SPEED_Y,
 	}
 
-	append(ballArray, new_ball)
+	rat.add(&world.balls, id, new_ball)
 }

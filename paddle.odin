@@ -40,7 +40,7 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 		if ball_bottom > paddle_mid_y {
 			return
 		}
-
+		b.color = rl.ORANGE
 		SquashBall(world, b.id)
 		rl.PlaySound(s)
 

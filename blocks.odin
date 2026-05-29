@@ -31,6 +31,7 @@ CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 		if block.durability <= 0 {
 			block.active = false
 			PlaySoundWithRandomPitch(s, 0.8, 1.2)
+			ball.color = rl.WHITE
 			SquashBall(world, ball.id)
 			CreateRadialParticleExplosion(
 				&world.particles,

@@ -22,8 +22,11 @@ UpdateTimers :: proc(timers: ^[dynamic]Timer) {
 		}
 
 		if timer.counter >= timer.frame_target {
-			if timer.onComplete != nil do timer.onComplete(timer.data)
+			// Copy off the array, then remove, then fire — so a callback that
+			// schedules another timer (and may realloc this array) can't dangle.
+			t := timer^
 			unordered_remove_dynamic_array(timers, i)
+			if t.onComplete != nil do t.onComplete(t.data)
 		}
 	}
 }

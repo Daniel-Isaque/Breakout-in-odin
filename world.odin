@@ -32,6 +32,7 @@ delete_world :: proc(world: ^World) {
 	delete(world.particles)
 	delete(world.timers)
 	rat.delete_sparse_set(&world.balls)
+	rat.free_entity_manager(&world.entity_manager)
 }
 
 create_object :: proc(world: ^World) -> rat.Id {

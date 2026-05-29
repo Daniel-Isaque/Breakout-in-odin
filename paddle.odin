@@ -1,6 +1,10 @@
 package breakout
 
+import "core:math"
 import rl "vendor:raylib"
+
+PADDLE_DEFAULT_SPAWN_X: f32 : 195
+PADDLE_DEFAULT_SPAWN_Y: f32 : 450
 
 Paddle :: struct {
 	x, y:          f32,
@@ -45,15 +49,16 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 		rl.PlaySound(s)
 
 		b.pos.y = p.y - b.height
-		b.speed_y = -BALL_SPEED_Y
+		b.speed_y *= -1
+		b.speed_boost += BALL_SPEED_INCREMENT
 
 		paddle_center := p.x + (p.width / 2.0)
 		ball_center := b.pos.x + (b.width / 2.0)
 
 		if ball_center < paddle_center {
-			b.speed_x = -BALL_SPEED_X
+			b.speed_x = -math.abs(b.speed_x)
 		} else {
-			b.speed_x = BALL_SPEED_X
+			b.speed_x = math.abs(b.speed_x)
 		}
 	}
 }

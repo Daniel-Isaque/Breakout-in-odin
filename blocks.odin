@@ -53,11 +53,8 @@ CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 			world.player_score += 1
 		}
 
-		if ball.speed_y < 0 {
-			ball.speed_y = BALL_SPEED_Y
-		} else {
-			ball.speed_y = -BALL_SPEED_Y
-		}
+		ball.speed_y *= -1
+		ball.speed_boost += BALL_SPEED_INCREMENT
 	}
 }
 

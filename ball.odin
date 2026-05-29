@@ -5,6 +5,16 @@ import "core:math/rand"
 import rat "rat-engine"
 import rl "vendor:raylib"
 
+BALL_DEFAULT_SPAWN_X: f32 : 225
+BALL_DEFAULT_SPAWN_Y: f32 : 166
+BALL_DEFAULT_WIDTH: f32 : 10
+BALL_DEFAULT_HEIGHT: f32 : 10
+BALL_HEIGHT: i32 : 10
+BALL_SPEED_X: f32 : 4.0
+BALL_SPEED_Y: f32 : 5.0
+
+BALL_SPEED_INCREMENT: f32 : 0.05
+
 Ball :: struct {
 	id:               rat.Id,
 	pos:              [2]f32,
@@ -12,6 +22,8 @@ Ball :: struct {
 	target_scale:     [2]f32,
 	visual_scale:     [2]f32,
 	speed_x, speed_y: f32,
+	speed_boost:      f32,
+	color:            rl.Color,
 }
 
 DrawBall :: proc(b: Ball) {
@@ -30,26 +42,26 @@ UpdateBall :: proc(world: ^World, b: ^Ball, s: rl.Sound) {
 		b.visual_scale.y = math.lerp(b.visual_scale.y, b.target_scale.y, f32(0.1))
 	}
 
-	b.pos[0] += b.speed_x + 0.2 * f32(world.round + 1)
-	b.pos[1] += b.speed_y + 0.2 * f32(world.round)
-
-	if i32(b.pos[0] + b.width) >= rl.GetScreenWidth() {
-		b.pos[0] = f32(rl.GetScreenWidth()) - b.width
-		b.speed_x = -BALL_SPEED_X
-		//TriggerShake(0.5)
-		AddShake(4)
-		SquashBall(world, b.id)
-	}
-	if b.pos[0] <= 0 {
-		b.pos[0] = 0
-		b.speed_x = BALL_SPEED_X
-		//TriggerShake(0.5)
+	if i32(b.pos.x + b.width) >= rl.GetScreenWidth() {
+		b.pos.x = f32(rl.GetScreenWidth()) - b.width
+		b.speed_x *= -1
+		b.speed_boost += BALL_SPEED_INCREMENT
 		AddShake(4)
 		SquashBall(world, b.id)
 	}
 
-	// o que eh pra ser isso, porque sair da tela por cima te aumenta um round?
-	if b.pos[1] <= 0 {
+	if b.pos.x <= 0 {
+		b.pos.x = 0
+		b.speed_x *= -1
+		b.speed_boost += BALL_SPEED_INCREMENT
+		AddShake(4)
+		SquashBall(world, b.id)
+	}
+
+	b.pos.x += b.speed_x + (math.sign(b.speed_x) * b.speed_boost)
+	b.pos.y += b.speed_y + (math.sign(b.speed_y) * b.speed_boost)
+
+	if b.pos.y <= 0 {
 		rl.PlaySound(s)
 		world.win_condition = true
 	}
@@ -57,8 +69,8 @@ UpdateBall :: proc(world: ^World, b: ^Ball, s: rl.Sound) {
 
 ResetBall :: proc(b: ^Ball) {
 
-	b.pos[0] = f32(rl.GetScreenWidth() / 2)
-	b.pos[1] = f32(rl.GetScreenHeight() / 3)
+	b.pos.x = f32(rl.GetScreenWidth() / 2)
+	b.pos.y = f32(rl.GetScreenHeight() / 3)
 
 	lista := [2]f32{-1, 1}
 
@@ -86,6 +98,7 @@ GiveNewBall :: proc(world: ^World, angle_offset: f32 = 0) {
 		target_scale = [2]f32{BALL_DEFAULT_WIDTH, BALL_DEFAULT_HEIGHT},
 		speed_x      = BALL_SPEED_X + angle_offset,
 		speed_y      = BALL_SPEED_Y,
+		speed_boost  = 0,
 	}
 
 	rat.add(&world.balls, id, new_ball)

@@ -33,27 +33,21 @@ UpdatePaddle :: proc(p: ^Paddle) {
 }
 
 CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
-	if rl.CheckCollisionRecs(
-		rl.Rectangle{b.pos[0], b.pos[1], b.width, b.height},
-		rl.Rectangle{p.x, p.y, p.width, p.height},
-	) {
-		paddle_mid_y := p.y + (p.height / 2.0)
-		ball_bottom := b.pos[1] + b.height
-
-		// checando isso pq a bola se salva o tempo todo
-		if ball_bottom > paddle_mid_y {
+	if rl.CheckCollisionRecs(GetBallRect(b^), rl.Rectangle{p.x, p.y, p.width, p.height}) {
+		// If the ball is already moving upwards, don't bounce again.
+		// This prevents "phasing" and double-collisions at high speeds.
+		if b.speed_y < 0 {
 			return
 		}
-		b.color = rl.ORANGE
 		SquashBall(world, b.id)
 		rl.PlaySound(s)
 
-		b.pos.y = p.y - b.height
+		b.pos.y = p.y - b.height / 2
 		b.speed_y *= -1
 		b.speed_boost += BALL_SPEED_INCREMENT
 
 		paddle_center := p.x + (p.width / 2.0)
-		ball_center := b.pos.x + (b.width / 2.0)
+		ball_center := b.pos.x
 
 		if ball_center < paddle_center {
 			b.speed_x = -math.abs(b.speed_x)

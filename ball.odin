@@ -15,6 +15,8 @@ BALL_SPEED_Y: f32 : 5.0
 
 BALL_SPEED_INCREMENT: f32 : 0.05
 
+trail_palette: []rl.Color = {rl.GRAY, rl.ORANGE, rl.YELLOW, rl.WHITE}
+
 Ball :: struct {
 	id:               rat.Id,
 	pos:              [2]f32,
@@ -26,42 +28,79 @@ Ball :: struct {
 	color:            rl.Color,
 }
 
+GetBallRect :: proc(b: Ball) -> rl.Rectangle {
+	return {b.pos.x - b.width / 2, b.pos.y - b.height / 2, b.width, b.height}
+}
+
 DrawBall :: proc(b: Ball) {
 	rl.DrawRectangle(
-		i32(b.pos[0]),
-		i32(b.pos[1]),
+		i32(b.pos.x - b.visual_scale.x / 2),
+		i32(b.pos.y - b.visual_scale.y / 2),
 		i32(b.visual_scale.x),
 		i32(b.visual_scale.y),
-		rl.WHITE,
+		b.color,
 	)
 }
 
-UpdateBall :: proc(world: ^World, b: ^Ball, s: rl.Sound) {
+UpdateBallVisuals :: proc(world: ^World, b: ^Ball) {
 	if b.visual_scale != b.target_scale {
 		b.visual_scale.x = math.lerp(b.visual_scale.x, b.target_scale.x, f32(0.1))
 		b.visual_scale.y = math.lerp(b.visual_scale.y, b.target_scale.y, f32(0.1))
 	}
 
-	if i32(b.pos.x + b.width) >= rl.GetScreenWidth() {
-		b.pos.x = f32(rl.GetScreenWidth()) - b.width
+	// Color progression: White -> Red
+	// It takes about 20 bounces (1.0 speed_boost) to become fully red.
+	factor := math.clamp(b.speed_boost, 0, 1.0)
+	val := u8(255.0 * (1.0 - factor))
+	b.color = rl.Color{255, val, val, 255}
+
+	// Use absolute magnitude so it works in both directions
+	arbitrary_speed_value: f32 = BALL_SPEED_X * 1.25 // lowered threshold slightly
+	current_speed_x := math.abs(b.speed_x) + b.speed_boost
+	if current_speed_x > arbitrary_speed_value {
+		// start creating fire trail
+		create_particle_rad(
+			&world.particles,
+			ParticleDto {
+				pos = b.pos +
+				[2]f32{random_range(-2, 2), random_range(-2, 2)},
+				angle         = 0,
+				color         = rl.WHITE,
+				lifetime      = 16,
+				scale         = {4, 4},
+				shape         = .CIRCLE,
+				shrink        = true,
+				shrink_factor = 0.1,
+				speed         = 0,
+				color_fade    = true,
+				color_palette = &trail_palette,
+			},
+		)
+
+	}
+}
+
+UpdateBallPhysics :: proc(world: ^World, b: ^Ball, s: rl.Sound, step: f32) {
+	if i32(b.pos.x + b.width / 2) >= rl.GetScreenWidth() {
+		b.pos.x = f32(rl.GetScreenWidth()) - b.width / 2
 		b.speed_x *= -1
 		b.speed_boost += BALL_SPEED_INCREMENT
 		AddShake(4)
 		SquashBall(world, b.id)
 	}
 
-	if b.pos.x <= 0 {
-		b.pos.x = 0
+	if b.pos.x - b.width / 2 <= 0 {
+		b.pos.x = b.width / 2
 		b.speed_x *= -1
 		b.speed_boost += BALL_SPEED_INCREMENT
 		AddShake(4)
 		SquashBall(world, b.id)
 	}
 
-	b.pos.x += b.speed_x + (math.sign(b.speed_x) * b.speed_boost)
-	b.pos.y += b.speed_y + (math.sign(b.speed_y) * b.speed_boost)
+	b.pos.x += (b.speed_x + (math.sign(b.speed_x) * b.speed_boost)) * step
+	b.pos.y += (b.speed_y + (math.sign(b.speed_y) * b.speed_boost)) * step
 
-	if b.pos.y <= 0 {
+	if b.pos.y - b.height / 2 <= 0 {
 		rl.PlaySound(s)
 		world.win_condition = true
 	}
@@ -89,6 +128,11 @@ GiveNewBall :: proc(world: ^World, angle_offset: f32 = 0) {
 		is_default_spawn ? BALL_DEFAULT_SPAWN_Y : world.balls.data[0].pos.y,
 	}
 
+	if is_default_spawn {
+		spawn_position.x += BALL_DEFAULT_WIDTH / 2
+		spawn_position.y += BALL_DEFAULT_HEIGHT / 2
+	}
+
 	new_ball: Ball = {
 		id           = id,
 		pos          = spawn_position,
@@ -99,6 +143,7 @@ GiveNewBall :: proc(world: ^World, angle_offset: f32 = 0) {
 		speed_x      = BALL_SPEED_X + angle_offset,
 		speed_y      = BALL_SPEED_Y,
 		speed_boost  = 0,
+		color        = rl.WHITE,
 	}
 
 	rat.add(&world.balls, id, new_ball)

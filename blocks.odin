@@ -81,12 +81,14 @@ FillBlockArray :: proc(block_array: ^[]Block, default_block: Block) {
 	for &e in block_array {
 		e = default_block
 	}
-
+	total_grid_width := ROWS * int(default_block.width) + (ROWS - 1) * 5
+	start_x := (SCREEN_WIDTH - total_grid_width) / 2 // centraliza
+	//
 	for column in 0 ..< COLUMNS {
 		for rows in 0 ..< ROWS {
 			i := column * ROWS + rows
 			block_array[i].color_id = column // set it here to make it easier to color explosions.
-			block_array[i].x = f32(2 + rows * (int(block_array[i].width) + 5))
+			block_array[i].x = f32(start_x + rows * (int(block_array[i].width) + 5))
 			block_array[i].y = f32(column * int(block_array[i].y) / 5 + 40)
 		}
 	}

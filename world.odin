@@ -12,6 +12,8 @@ World :: struct {
 	lives:          i32,
 	round:          i32,
 	win_condition:  bool,
+	bg_counter:     int,
+	bg_index:       int,
 }
 
 create_world :: proc() -> World {

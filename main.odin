@@ -38,6 +38,8 @@ ResetGame :: proc(pad: ^Paddle, world: ^World) {
 	world.lives = 5
 	world.round = 0
 	world.player_score = 0
+	world.bg_counter = 0
+	world.bg_index = 0
 }
 
 main :: proc() {
@@ -59,7 +61,7 @@ main :: proc() {
 
 	default_block: Block = {
 		height     = 10,
-		width      = 30,
+		width      = 25,
 		x          = 0,
 		y          = 80,
 		active     = true,
@@ -77,6 +79,17 @@ main :: proc() {
 
 	defer rl.CloseWindow()
 	defer rl.CloseAudioDevice()
+
+	bg: [4]rl.Texture2D = {
+		rl.LoadTexture("assets/Sprites/Space_bg.png"),
+		rl.LoadTexture("assets/Sprites/Space_bg(1).png"),
+		rl.LoadTexture("assets/Sprites/Space_bg(2).png"),
+		rl.LoadTexture("assets/Sprites/Space_bg(3).png"),
+	}
+	defer rl.UnloadTexture(bg[0])
+	defer rl.UnloadTexture(bg[1])
+	defer rl.UnloadTexture(bg[2])
+	defer rl.UnloadTexture(bg[3])
 
 	paddle_sound := rl.LoadSound("assets/Audio/Blip.wav")
 	win_sound := rl.LoadSound("assets/Audio/Win_test.wav")
@@ -103,7 +116,12 @@ main :: proc() {
 		} else {
 			game_camera.offset = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}
 		}*/
-
+		world.bg_counter += 1
+		if world.bg_counter >= 5 {
+			world.bg_counter = 0
+			world.bg_index += 1
+			if world.bg_index >= 4 do world.bg_index = 0
+		}
 		for i := int(world.balls.count) - 1; i >= 0; i -= 1 {
 			id := world.balls.dense[i]
 			ball := &world.balls.data[i]
@@ -158,7 +176,7 @@ main :: proc() {
 		UpdateScreenshake(&game_camera)
 
 		rl.BeginDrawing()
-		rl.ClearBackground(rl.BLACK)
+		rl.DrawTexture(bg[world.bg_index], 0, 0, rl.WHITE)
 
 		rl.DrawText(rl.TextFormat("%d", world.lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
 		rl.DrawText(

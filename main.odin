@@ -119,12 +119,11 @@ main :: proc() {
 
 			UpdateBallVisuals(&world, ball)
 
-			// Calculate sub-steps
 			vel_x := ball.speed_x + (math.sign(ball.speed_x) * ball.speed_boost)
 			vel_y := ball.speed_y + (math.sign(ball.speed_y) * ball.speed_boost)
 			max_vel := math.max(math.abs(vel_x), math.abs(vel_y))
 
-			sub_steps := int(math.ceil(max_vel / 4.0)) // step size of 4px max
+			sub_steps := int(math.ceil(max_vel / 4.0))
 			if sub_steps < 1 do sub_steps = 1
 
 			step_dt := 1.0 / f32(sub_steps)

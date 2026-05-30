@@ -34,8 +34,6 @@ UpdatePaddle :: proc(p: ^Paddle) {
 
 CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 	if rl.CheckCollisionRecs(GetBallRect(b^), rl.Rectangle{p.x, p.y, p.width, p.height}) {
-		// If the ball is already moving upwards, don't bounce again.
-		// This prevents "phasing" and double-collisions at high speeds.
 		if b.speed_y < 0 {
 			return
 		}

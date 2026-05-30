@@ -54,11 +54,9 @@ CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 		}
 
 		if ball.pos.y < block.y + (block.height / 2.0) {
-			// Hit top
 			if ball.speed_y < 0 do return
 			ball.speed_y = -math.abs(ball.speed_y)
 		} else {
-			// Hit bottom
 			if ball.speed_y > 0 do return
 			ball.speed_y = math.abs(ball.speed_y)
 		}

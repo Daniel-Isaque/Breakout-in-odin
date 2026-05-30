@@ -33,6 +33,14 @@ GetBallRect :: proc(b: Ball) -> rl.Rectangle {
 }
 
 DrawBall :: proc(b: Ball) {
+	aura_factor := math.clamp(b.speed_boost, 0, 1.0)
+	if aura_factor > 0.05 {
+		aura_color := b.color
+		aura_color.a = u8(125.0 * aura_factor)
+		radius := (b.width / 2.0) + (b.width / 2.0 * aura_factor)
+		rl.DrawCircleV(b.pos, radius, aura_color)
+	}
+
 	rl.DrawRectangle(
 		i32(b.pos.x - b.visual_scale.x / 2),
 		i32(b.pos.y - b.visual_scale.y / 2),
@@ -48,17 +56,13 @@ UpdateBallVisuals :: proc(world: ^World, b: ^Ball) {
 		b.visual_scale.y = math.lerp(b.visual_scale.y, b.target_scale.y, f32(0.1))
 	}
 
-	// Color progression: White -> Red
-	// It takes about 20 bounces (1.0 speed_boost) to become fully red.
 	factor := math.clamp(b.speed_boost, 0, 1.0)
 	val := u8(255.0 * (1.0 - factor))
 	b.color = rl.Color{255, val, val, 255}
 
-	// Use absolute magnitude so it works in both directions
-	arbitrary_speed_value: f32 = BALL_SPEED_X * 1.25 // lowered threshold slightly
+	arbitrary_speed_value: f32 = BALL_SPEED_X * 1.25
 	current_speed_x := math.abs(b.speed_x) + b.speed_boost
 	if current_speed_x > arbitrary_speed_value {
-		// start creating fire trail
 		create_particle_rad(
 			&world.particles,
 			ParticleDto {

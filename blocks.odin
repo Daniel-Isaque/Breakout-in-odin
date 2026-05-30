@@ -1,5 +1,6 @@
 package breakout
 
+import "core:math"
 import rl "vendor:raylib"
 
 BlockColors: []rl.Color = {
@@ -22,7 +23,7 @@ Block :: struct {
 
 CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 	if rl.CheckCollisionRecs(
-		rl.Rectangle{ball.pos.x, ball.pos.y, ball.width, ball.height},
+		GetBallRect(ball^),
 		rl.Rectangle{block.x, block.y, block.width, block.height},
 	) {
 		//		TriggerShake(0.8)
@@ -31,9 +32,8 @@ CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 		if block.durability <= 0 {
 			block.active = false
 			PlaySoundWithRandomPitch(s, 0.8, 1.2)
-			ball.color = rl.WHITE
 			SquashBall(world, ball.id)
-			CreateRadialParticleExplosion(
+			create_radial_particle_explosion(
 				&world.particles,
 				ParticleDto {
 					pos           = [2]f32{block.x, block.y},
@@ -53,11 +53,14 @@ CheckBlocks :: proc(world: ^World, block: ^Block, ball: ^Ball, s: rl.Sound) {
 			world.player_score += 1
 		}
 
-		if ball.speed_y < 0 {
-			ball.speed_y = BALL_SPEED_Y
+		if ball.pos.y < block.y + (block.height / 2.0) {
+			if ball.speed_y < 0 do return
+			ball.speed_y = -math.abs(ball.speed_y)
 		} else {
-			ball.speed_y = -BALL_SPEED_Y
+			if ball.speed_y > 0 do return
+			ball.speed_y = math.abs(ball.speed_y)
 		}
+		ball.speed_boost += BALL_SPEED_INCREMENT
 	}
 }
 

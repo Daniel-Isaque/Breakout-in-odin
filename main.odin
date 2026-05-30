@@ -1,5 +1,6 @@
 package breakout
 
+import "core:math"
 import rat "rat-engine"
 import rl "vendor:raylib"
 
@@ -8,16 +9,6 @@ SCREEN_HEIGHT :: 500
 COLUMNS :: 7
 ROWS :: 13
 MAX_BLOCKS :: 91
-
-PADDLE_DEFAULT_SPAWN_X: f32 : 195
-PADDLE_DEFAULT_SPAWN_Y: f32 : 450
-BALL_DEFAULT_SPAWN_X: f32 : 225
-BALL_DEFAULT_SPAWN_Y: f32 : 166
-BALL_DEFAULT_WIDTH: f32 : 10
-BALL_DEFAULT_HEIGHT: f32 : 10
-BALL_HEIGHT: i32 : 10
-BALL_SPEED_X: f32 : 4.0
-BALL_SPEED_Y: f32 : 5.0
 
 ResetGame :: proc(pad: ^Paddle, world: ^World) {
 	//reset paddle
@@ -126,12 +117,26 @@ main :: proc() {
 			id := world.balls.dense[i]
 			ball := &world.balls.data[i]
 
-			UpdateBall(&world, ball, win_sound)
-			CheckPaddleBounces(&paddle, ball, &world, paddle_sound)
-			for j in 0 ..< len(world.blocks) {
-				if !world.blocks[j].active do continue
-				CheckBlocks(&world, &world.blocks[j], ball, boom_sound)
+			UpdateBallVisuals(&world, ball)
+
+			vel_x := ball.speed_x + (math.sign(ball.speed_x) * ball.speed_boost)
+			vel_y := ball.speed_y + (math.sign(ball.speed_y) * ball.speed_boost)
+			max_vel := math.max(math.abs(vel_x), math.abs(vel_y))
+
+			sub_steps := int(math.ceil(max_vel / 4.0))
+			if sub_steps < 1 do sub_steps = 1
+
+			step_dt := 1.0 / f32(sub_steps)
+
+			for s in 0 ..< sub_steps {
+				UpdateBallPhysics(&world, ball, win_sound, step_dt)
+				CheckPaddleBounces(&paddle, ball, &world, paddle_sound)
+				for j in 0 ..< len(world.blocks) {
+					if !world.blocks[j].active do continue
+					CheckBlocks(&world, &world.blocks[j], ball, boom_sound)
+				}
 			}
+
 			if ball.pos.y > SCREEN_HEIGHT {
 				rat.remove(&world.balls, id)
 				if world.balls.count == 0 {
@@ -172,7 +177,7 @@ main :: proc() {
 			}
 		}
 
-		UpdateParticles(&world.particles)
+		update_particles(&world.particles)
 		UpdateScreenshake(&game_camera)
 
 		rl.BeginDrawing()
@@ -195,7 +200,7 @@ main :: proc() {
 
 		DrawPaddle(paddle)
 		DrawBlocks(world.blocks)
-		DrawParticles(&world.particles)
+		draw_particles(&world.particles)
 
 		rl.EndMode2D()
 

@@ -43,11 +43,13 @@ main :: proc() {
 	}
 
 	paddle: Paddle = {
-		width  = 60,
-		height = 10,
-		x      = PADDLE_DEFAULT_SPAWN_X,
-		y      = PADDLE_DEFAULT_SPAWN_Y,
-		speed  = 12,
+		width       = 60,
+		height      = 10,
+		x           = PADDLE_DEFAULT_SPAWN_X,
+		y           = PADDLE_DEFAULT_SPAWN_Y,
+		speed       = 12,
+		visual      = {195, 380},
+		visual_size = {70, 100},
 	}
 
 	default_block: Block = {
@@ -70,6 +72,9 @@ main :: proc() {
 
 	defer rl.CloseWindow()
 	defer rl.CloseAudioDevice()
+
+	glorp := rl.LoadTexture("assets/Sprites/glorp.png")
+	defer rl.UnloadTexture(glorp)
 
 	bg: [4]rl.Texture2D = {
 		rl.LoadTexture("assets/Sprites/Space_bg.png"),
@@ -113,10 +118,10 @@ main :: proc() {
 			world.bg_index += 1
 			if world.bg_index >= 4 do world.bg_index = 0
 		}
+		UpdatePaddle(&paddle)
 		for i := int(world.balls.count) - 1; i >= 0; i -= 1 {
 			id := world.balls.dense[i]
 			ball := &world.balls.data[i]
-
 			UpdateBallVisuals(&world, ball)
 
 			vel_x := ball.speed_x + (math.sign(ball.speed_x) * ball.speed_boost)
@@ -130,6 +135,10 @@ main :: proc() {
 
 			for s in 0 ..< sub_steps {
 				UpdateBallPhysics(&world, ball, win_sound, step_dt)
+				if !paddle.paddle_bounced && CheckVisualHit(&paddle, ball) {
+					angle = math.PI * 0.1
+					paddle.paddle_bounced = true // still need a trigger for UpdatePaddle...
+				}
 				CheckPaddleBounces(&paddle, ball, &world, paddle_sound)
 				for j in 0 ..< len(world.blocks) {
 					if !world.blocks[j].active do continue
@@ -144,10 +153,10 @@ main :: proc() {
 					GiveNewBall(&world)
 				}
 			}
+
 		}
 
 		rat.UpdateTimers(&world.timers)
-		UpdatePaddle(&paddle)
 
 		if world.balls.count == 0 && world.lives < 0 {
 			GiveNewBall(&world)
@@ -176,7 +185,6 @@ main :: proc() {
 				}
 			}
 		}
-
 		update_particles(&world.particles)
 		UpdateScreenshake(&game_camera)
 
@@ -198,7 +206,7 @@ main :: proc() {
 			DrawBall(world.balls.data[i])
 		}
 
-		DrawPaddle(paddle)
+		DrawPaddle(paddle, glorp)
 		DrawBlocks(world.blocks)
 		draw_particles(&world.particles)
 

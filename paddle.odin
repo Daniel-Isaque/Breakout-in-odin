@@ -1,35 +1,57 @@
 package breakout
 
 import "core:math"
+import rat "rat-engine"
 import rl "vendor:raylib"
 
 PADDLE_DEFAULT_SPAWN_X: f32 : 195
 PADDLE_DEFAULT_SPAWN_Y: f32 : 450
-PADDLE_DEFAULT_VISUAL_X: f32 : 195
-PADDLE_DEFAULT_VISUAl_Y: f32 : 380
+PADDLE_DEFAULT_VIRTUAL_X: f32 : 195
+PADDLE_DEFAULT_VIRTUAl_Y: f32 : 400
+PADDLE_DEFAULT_VISUAL_X: f32 : 65
+PADDLE_DEFAULT_VISUAL_Y: f32 : 100
 Paddle :: struct {
+	id:             rat.Id,
 	x, y:           f32,
 	width, height:  f32,
 	speed:          f32,
-	visual:         rl.Vector2,
+	virtual_pos:    rl.Vector2,
 	visual_size:    rl.Vector2,
+	visual_target:  rl.Vector2,
 	paddle_bounced: bool,
 }
-amplitude: f32 = 5
+amplitude: f32 = 10
 angle: f32 = 0
 speedS: f32 = 0.06
 DrawPaddle :: proc(p: Paddle, glorp: rl.Texture2D) {
 	rl.DrawTexturePro(
 		glorp,
 		rl.Rectangle{0, 0, f32(glorp.width), f32(glorp.height)},
-		rl.Rectangle{p.x, p.visual.y, p.visual_size.x, p.visual_size.y},
+		rl.Rectangle{p.virtual_pos.x, p.virtual_pos.y, p.visual_size.x, p.visual_size.y},
 		rl.Vector2{0, 0},
 		0,
 		rl.WHITE,
 	)
 }
 
-UpdatePaddle :: proc(p: ^Paddle) {
+SpawnPlayer :: proc(world: ^World) {
+	id := create_object(world)
+
+	new_paddle: Paddle = {
+		id            = id,
+		width         = 60,
+		height        = 10,
+		x             = PADDLE_DEFAULT_SPAWN_X,
+		y             = PADDLE_DEFAULT_SPAWN_Y - 10,
+		speed         = 12,
+		virtual_pos   = {PADDLE_DEFAULT_VIRTUAL_X, PADDLE_DEFAULT_VIRTUAl_Y},
+		visual_size   = {65, 100},
+		visual_target = {PADDLE_DEFAULT_VISUAL_X, PADDLE_DEFAULT_VISUAL_Y},
+	}
+	rat.add(&world.player, id, new_paddle)
+}
+
+UpdatePaddle :: proc(p: ^Paddle, world: ^World) {
 
 
 	if rl.IsKeyDown(rl.KeyboardKey.RIGHT) {
@@ -42,28 +64,15 @@ UpdatePaddle :: proc(p: ^Paddle) {
 		p.x = 0
 	}
 	if p.x + p.width >= f32(rl.GetScreenWidth()) {
-		p.x = f32(rl.GetScreenWidth()) - p.width - 10
+		p.x = f32(rl.GetScreenWidth()) - p.width
 	}
-	p.visual.x = p.x
+	p.virtual_pos.x = p.x - 2
 
 	if p.paddle_bounced {
-		angle += speedS
-		// squash: scale Y down to a min then back up
-		t := math.sin(angle) // goes 0 -> 1 -> 0
-		min_scale: f32 = 0.4 // how squashed it gets, tweak to taste
-		scale := 1.0 - (t * (1.0 - min_scale))
-		scale = math.max(scale, 0.3)
-
-		p.visual_size.y = 100 * scale
-		// keep it grounded by adjusting y so it doesnt float up
-		p.visual.y = PADDLE_DEFAULT_VISUAl_Y + (t * amplitude) + (100 - p.visual_size.y)
-		if angle > math.PI {
-			angle = 0
-			p.paddle_bounced = false
-			p.visual_size.y = 100
-			p.visual.y = PADDLE_DEFAULT_VISUAl_Y
-		}
+		SquashPaddle(world, p.id)
+		p.paddle_bounced = false
 	}
+
 }
 CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 	if rl.CheckCollisionRecs(GetBallRect(b^), rl.Rectangle{p.x, p.y, p.width, p.height}) {
@@ -71,7 +80,7 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 			return
 		}
 		SquashBall(world, b.id)
-		rl.PlaySound(s)
+		PlaySoundWithRandomPitch(s, 0.5, 0.8)
 
 		b.pos.y = p.y - b.height / 2
 		b.speed_y *= -1
@@ -91,7 +100,9 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
 CheckVisualHit :: proc(p: ^Paddle, b: ^Ball) -> bool {
 	if rl.CheckCollisionRecs(
 		GetBallRect(b^),
-		rl.Rectangle(rl.Rectangle{p.visual.x, p.visual.y, p.visual_size.x, p.visual_size.y}),
+		rl.Rectangle(
+			rl.Rectangle{p.virtual_pos.x, p.virtual_pos.y, p.visual_size.x, p.visual_size.y},
+		),
 	) {
 		if b.speed_y < 0 {
 			return false
@@ -99,4 +110,43 @@ CheckVisualHit :: proc(p: ^Paddle, b: ^Ball) -> bool {
 		return true
 	}
 	return false
+}
+
+ResetScaleP :: proc(raw: rawptr) {
+	data := (^PaddleScaler)(raw)
+	defer free(data)
+
+	player, ok := rat.get(&data.world.player, data.id)
+	if ok {
+		player.visual_size.y = math.lerp(
+			player.visual_size.y,
+			player.visual_target.y + 20,
+			f32(0.1),
+		)
+
+	}
+}
+
+
+PaddleScaler :: struct {
+	world: ^World,
+	id:    rat.Id,
+}
+
+SquashPaddle :: proc(world: ^World, paddle_id: rat.Id) {
+	player, ok := rat.get(&world.player, paddle_id)
+	if !ok do return
+
+	// squash: scale Y down to a min then back up
+	player.visual_size.y = math.lerp(player.visual_size.y, player.visual_target.y - 20, f32(0.1))
+
+
+	data := new(PaddleScaler)
+	data.world = world
+	data.id = paddle_id
+
+	append(
+		&world.timers,
+		rat.Timer{counter = 0, data = data, frame_target = 20, onComplete = ResetScaleP},
+	)
 }

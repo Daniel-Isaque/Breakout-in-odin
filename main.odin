@@ -42,16 +42,6 @@ main :: proc() {
 		zoom     = 1,
 	}
 
-	paddle: Paddle = {
-		width       = 60,
-		height      = 10,
-		x           = PADDLE_DEFAULT_SPAWN_X,
-		y           = PADDLE_DEFAULT_SPAWN_Y,
-		speed       = 12,
-		visual      = {195, 380},
-		visual_size = {70, 100},
-	}
-
 	default_block: Block = {
 		height     = 10,
 		width      = 25,
@@ -63,6 +53,9 @@ main :: proc() {
 
 	world := create_world()
 	defer delete_world(&world)
+
+	SpawnPlayer(&world)
+	player := &world.player.data[0]
 
 	FillBlockArray(&world.blocks, default_block)
 
@@ -87,9 +80,12 @@ main :: proc() {
 	defer rl.UnloadTexture(bg[2])
 	defer rl.UnloadTexture(bg[3])
 
-	paddle_sound := rl.LoadSound("assets/Audio/Blip.wav")
+	paddle_sound := rl.LoadSound("assets/Audio/Boing_sound.wav")
 	win_sound := rl.LoadSound("assets/Audio/Win_test.wav")
 	boom_sound := rl.LoadSound("assets/Audio/Boom.wav")
+
+	rl.SetSoundVolume(boom_sound, 0.6)
+	rl.SetSoundVolume(paddle_sound, 1)
 
 	defer rl.UnloadSound(win_sound)
 	defer rl.UnloadSound(paddle_sound)
@@ -118,7 +114,7 @@ main :: proc() {
 			world.bg_index += 1
 			if world.bg_index >= 4 do world.bg_index = 0
 		}
-		UpdatePaddle(&paddle)
+		UpdatePaddle(player, &world)
 		for i := int(world.balls.count) - 1; i >= 0; i -= 1 {
 			id := world.balls.dense[i]
 			ball := &world.balls.data[i]
@@ -135,11 +131,11 @@ main :: proc() {
 
 			for s in 0 ..< sub_steps {
 				UpdateBallPhysics(&world, ball, win_sound, step_dt)
-				if !paddle.paddle_bounced && CheckVisualHit(&paddle, ball) {
+				if !player.paddle_bounced && CheckVisualHit(player, ball) {
 					angle = math.PI * 0.1
-					paddle.paddle_bounced = true // still need a trigger for UpdatePaddle...
+					player.paddle_bounced = true // still need a trigger for UpdatePaddle...
 				}
-				CheckPaddleBounces(&paddle, ball, &world, paddle_sound)
+				CheckPaddleBounces(player, ball, &world, paddle_sound)
 				for j in 0 ..< len(world.blocks) {
 					if !world.blocks[j].active do continue
 					CheckBlocks(&world, &world.blocks[j], ball, boom_sound)
@@ -163,13 +159,14 @@ main :: proc() {
 		}
 
 		if world.lives <= 0 {
-			ResetGame(&paddle, &world)
+			ResetGame(player, &world)
 		}
 
 		if world.win_condition {
+
 			world.win_condition = false
-			paddle.x = PADDLE_DEFAULT_SPAWN_X
-			paddle.y = PADDLE_DEFAULT_SPAWN_Y
+			player.x = PADDLE_DEFAULT_SPAWN_X
+			player.y = PADDLE_DEFAULT_SPAWN_Y
 			world.lives = 5
 			world.round += 1
 
@@ -206,7 +203,7 @@ main :: proc() {
 			DrawBall(world.balls.data[i])
 		}
 
-		DrawPaddle(paddle, glorp)
+		DrawPaddle(player^, glorp)
 		DrawBlocks(world.blocks)
 		draw_particles(&world.particles)
 

@@ -40,6 +40,8 @@ GameAssets :: struct {
 	paddle_sound: rl.Sound,
 	boom_sound:   rl.Sound,
 	win_sound:    rl.Sound,
+	menu_swap:    rl.Sound,
+	menu_select:  rl.Sound,
 }
 
 MenuOptions :: enum {
@@ -55,6 +57,16 @@ GameState :: enum {
 	Loop,
 }
 
+MenuState :: enum {
+	Main,
+	Settings,
+}
+
+SettingsOptions :: enum {
+	Volume,
+	Count,
+}
+
 unload_assets :: proc(assets: ^GameAssets) {
 	rl.UnloadTexture(assets^.glorp)
 	for i in 0 ..< 4 {
@@ -63,6 +75,9 @@ unload_assets :: proc(assets: ^GameAssets) {
 	rl.UnloadSound(assets^.paddle_sound)
 	rl.UnloadSound(assets^.boom_sound)
 	rl.UnloadSound(assets^.win_sound)
+	rl.UnloadSound(assets^.menu_select)
+	rl.UnloadSound(assets^.menu_swap)
+
 }
 
 main :: proc() {
@@ -84,11 +99,13 @@ main :: proc() {
 	}
 
 	world1 := create_world()
+	world1.volume = 10
 
 	SpawnPlayer(&world1)
 	player := &world1.player.data[0]
 
 	world1.game_state = GameState.Menu
+	world1.menu_state = MenuState.Main
 	world1.cursor = 0
 
 	FillBlockArray(&world1.blocks, default_block)
@@ -108,6 +125,8 @@ main :: proc() {
 		paddle_sound = rl.LoadSound("assets/Audio/Boing_sound.wav"),
 		boom_sound   = rl.LoadSound("assets/Audio/Boom.wav"),
 		win_sound    = rl.LoadSound("assets/Audio/Win_test.wav"),
+		menu_swap    = rl.LoadSound("assets/Audio/menu_swap.wav"),
+		menu_select  = rl.LoadSound("assets/Audio/select_op.wav"),
 	}
 
 	defer rl.CloseAudioDevice()
@@ -125,7 +144,7 @@ main :: proc() {
 
 		switch (world1.game_state) {
 		case .Menu:
-			UpdateMenu(&world1)
+			UpdateMenu(&world1, asset)
 		case .Loop:
 			UpdateGame(&world1, asset)
 		}
@@ -148,33 +167,62 @@ main :: proc() {
 
 		switch (world1.game_state) {
 		case .Menu:
-			itens := [3]cstring{"START", "SETTINGS", "CLOSE"}
-			cursor_size: i32 = 20
-			font_size: i32 = 40
-			spacing: i32 = 10
-			item_count: i32 = len(itens)
-			for i in 0 ..< len(itens) {
-				text_width := rl.MeasureText(itens[i], font_size)
+			switch (world1.menu_state) {
+			case .Main:
+				itens := [3]cstring{"START", "SETTINGS", "CLOSE"}
+				cursor_size: i32 = 20
+				font_size: i32 = 40
+				spacing: i32 = 10
+				item_count: i32 = len(itens)
+				for i in 0 ..< len(itens) {
+					text_width := rl.MeasureText(itens[i], font_size)
+					x := (SCREEN_WIDTH - text_width) / 2
+
+					menu_height := item_count * font_size + (i32(item_count - 1) * spacing)
+					start_y := (SCREEN_HEIGHT - menu_height) / 2
+					y := start_y + i32(i) * (font_size + spacing)
+
+					rl.DrawText(itens[i], i32(x), i32(y), 40, rl.YELLOW)
+					if i32(i) == world1.cursor {
+						rl.DrawText(itens[i], i32(x), i32(y), 40, rl.PINK)
+					}
+
+					cursor_y :=
+						start_y +
+						world1.cursor * (font_size + spacing) +
+						(font_size - cursor_size) / 2
+					cursor_x :=
+						(SCREEN_WIDTH - rl.MeasureText(itens[world1.cursor], font_size)) / 2 - 30
+
+					rl.DrawRectangle(cursor_x, cursor_y, cursor_size, cursor_size, rl.WHITE)
+				}
+			case .Settings:
+				itens: cstring = "Master Volume"
+				cursor_size: i32 = 20
+				font_size: i32 = 40
+				spacing: i32 = 10
+				item_count: i32 = 1
+				text_width := rl.MeasureText(itens, font_size)
 				x := (SCREEN_WIDTH - text_width) / 2
 
 				menu_height := item_count * font_size + (i32(item_count - 1) * spacing)
 				start_y := (SCREEN_HEIGHT - menu_height) / 2
-				y := start_y + i32(i) * (font_size + spacing)
+				y := start_y
 
-				rl.DrawText(itens[i], i32(x), i32(y), 40, rl.YELLOW)
-				if i32(i) == world1.cursor {
-					rl.DrawText(itens[i], i32(x), i32(y), 40, rl.PINK)
+				for rows in 0 ..< world1.volume {
+					rl.DrawRectangle(SCREEN_WIDTH / 2 + i32(rows * 22), i32(y), 20, 40, rl.WHITE)
 				}
+
+				rl.DrawText(itens, i32(x) - 5, i32(y) + 10, 20, rl.PINK)
 
 				cursor_y :=
 					start_y + world1.cursor * (font_size + spacing) + (font_size - cursor_size) / 2
-				cursor_x :=
-					(SCREEN_WIDTH - rl.MeasureText(itens[world1.cursor], font_size)) / 2 - 30
+				cursor_x := (SCREEN_WIDTH - rl.MeasureText(itens, font_size)) / 2 - 30
 
 				rl.DrawRectangle(cursor_x, cursor_y, cursor_size, cursor_size, rl.WHITE)
 
-			}
 
+			}
 
 		case .Loop:
 			rl.DrawText(rl.TextFormat("%d", world1.lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)

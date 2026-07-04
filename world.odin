@@ -18,6 +18,8 @@ World :: struct {
 	cursor:         i32,
 	game_state:     GameState,
 	should_close:   bool,
+	menu_state:     MenuState,
+	volume:         f32,
 }
 
 create_world :: proc() -> World {

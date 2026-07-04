@@ -5,25 +5,61 @@ import "core:math"
 import rat "rat-engine"
 import rl "vendor:raylib"
 
-UpdateMenu :: proc(world: ^World) {
-	if rl.IsKeyPressed(.DOWN) && (world.cursor + i32(1)) < i32(MenuOptions.Count) do world.cursor += i32(1)
-	if rl.IsKeyPressed(.UP) && (world.cursor - i32(1)) >= 0 do world.cursor -= i32(1)
+UpdateMenu :: proc(world: ^World, assets: GameAssets) {
+	option_count: int = 0
+	switch (world.menu_state) {
+	case .Main:
+		option_count = int(MenuOptions.Count)
+	case .Settings:
+		option_count = int(SettingsOptions.Count)
+	}
+	if rl.IsKeyPressed(.DOWN) && (world.cursor + i32(1)) < i32(option_count) {
+		world.cursor += i32(1)
+		rl.PlaySound(assets.menu_swap)
+	}
+	if rl.IsKeyPressed(.UP) && (world.cursor - i32(1)) >= 0 {
+		world.cursor -= i32(1)
+		rl.PlaySound(assets.menu_swap)
+	}
+	switch (world.menu_state) {
+	case .Main:
+		if rl.IsKeyPressed(.ENTER) {
+			rl.PlaySound(assets.menu_select)
+			#partial switch (MenuOptions(world.cursor)) {
+			case .Play:
+				world.game_state = .Loop
+			case .Settings:
+				world.cursor = 0
+				world.menu_state = .Settings
+			case .Close:
+				f.printfln("Bye")
+				world.should_close = true
+			}
+		}
+	case .Settings:
+		if rl.IsKeyPressed(.LEFT) && (world.volume - 1) >= 0 {
+			world.volume -= 1
+			rl.PlaySound(assets.menu_swap)
+			rl.SetMasterVolume(f32(world.volume / 10))
+		}
+		if rl.IsKeyPressed(.RIGHT) && (world.volume + 1) < 11 {
+			world.volume += 1
+			rl.PlaySound(assets.menu_swap)
+			rl.SetMasterVolume(world.volume / 10)
+		}
 
-	if rl.IsKeyPressed(.ENTER) {
-		#partial switch (MenuOptions(world.cursor)) {
-		case .Play:
-			world.game_state = .Loop
-		case .Settings:
-			f.printfln("Entering settings")
-		case .Close:
-			f.printfln("Bye")
-			world.should_close = true
+		if rl.IsKeyPressed(.BACKSPACE) {
+			world.cursor = 0
+			world.menu_state = .Main
+
 		}
 	}
+
 }
-UpdateGame :: proc(world: ^World, asset: GameAssets) {
+UpdateGame :: proc(world: ^World, assets: GameAssets) {
 	player := &world.player.data[0]
 	if rl.IsKeyPressed(.ENTER) {
+		rl.PlaySound(assets.menu_select)
 		world.game_state = .Menu
 	}
 	world.bg_counter += 1
@@ -50,18 +86,18 @@ UpdateGame :: proc(world: ^World, asset: GameAssets) {
 		step_dt := 1.0 / f32(sub_steps)
 
 		for s in 0 ..< sub_steps {
-			UpdateBallPhysics(world, ball, asset.win_sound, step_dt)
+			UpdateBallPhysics(world, ball, assets.win_sound, step_dt)
 
 			if !player.paddle_bounced && CheckVisualHit(player, ball) {
 				angle = math.PI * 0.1
 				player.paddle_bounced = true
 			}
 
-			CheckPaddleBounces(player, ball, world, asset.paddle_sound)
+			CheckPaddleBounces(player, ball, world, assets.paddle_sound)
 
 			for j in 0 ..< len(world.blocks) {
 				if !world.blocks[j].active do continue
-				CheckBlocks(world, &world.blocks[j], ball, asset.boom_sound)
+				CheckBlocks(world, &world.blocks[j], ball, assets.boom_sound)
 			}
 		}
 

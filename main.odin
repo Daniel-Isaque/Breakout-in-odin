@@ -1,5 +1,6 @@
 package breakout
 
+import "core:fmt"
 import "core:math"
 import rat "rat-engine"
 import rl "vendor:raylib"
@@ -33,6 +34,37 @@ ResetGame :: proc(pad: ^Paddle, world: ^World) {
 	world.bg_index = 0
 }
 
+GameAssets :: struct {
+	glorp:        rl.Texture2D,
+	bg:           [4]rl.Texture2D,
+	paddle_sound: rl.Sound,
+	boom_sound:   rl.Sound,
+	win_sound:    rl.Sound,
+}
+
+MenuOptions :: enum {
+	Play,
+	Settings,
+	Close,
+	Count,
+}
+
+
+GameState :: enum {
+	Menu,
+	Loop,
+}
+
+unload_assets :: proc(assets: ^GameAssets) {
+	rl.UnloadTexture(assets^.glorp)
+	for i in 0 ..< 4 {
+		rl.UnloadTexture(assets^.bg[i])
+	}
+	rl.UnloadSound(assets^.paddle_sound)
+	rl.UnloadSound(assets^.boom_sound)
+	rl.UnloadSound(assets^.win_sound)
+}
+
 main :: proc() {
 
 	game_camera = {
@@ -51,49 +83,52 @@ main :: proc() {
 		durability = 1,
 	}
 
-	world := create_world()
-	defer delete_world(&world)
+	world1 := create_world()
 
-	SpawnPlayer(&world)
-	player := &world.player.data[0]
+	SpawnPlayer(&world1)
+	player := &world1.player.data[0]
 
-	FillBlockArray(&world.blocks, default_block)
+	world1.game_state = GameState.Menu
+	world1.cursor = 0
+
+	FillBlockArray(&world1.blocks, default_block)
 
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Breakout 1967 LOOP OF DEATH")
 	rl.InitAudioDevice()
 	rl.SetTargetFPS(60)
 
-	defer rl.CloseWindow()
-	defer rl.CloseAudioDevice()
-
-	glorp := rl.LoadTexture("assets/Sprites/glorp.png")
-	defer rl.UnloadTexture(glorp)
-
-	bg: [4]rl.Texture2D = {
-		rl.LoadTexture("assets/Sprites/Space_bg.png"),
-		rl.LoadTexture("assets/Sprites/Space_bg(1).png"),
-		rl.LoadTexture("assets/Sprites/Space_bg(2).png"),
-		rl.LoadTexture("assets/Sprites/Space_bg(3).png"),
+	asset := GameAssets {
+		glorp        = rl.LoadTexture("assets/Sprites/glorp.png"),
+		bg           = {
+			rl.LoadTexture("assets/Sprites/Space_bg.png"),
+			rl.LoadTexture("assets/Sprites/Space_bg(1).png"),
+			rl.LoadTexture("assets/Sprites/Space_bg(2).png"),
+			rl.LoadTexture("assets/Sprites/Space_bg(3).png"),
+		},
+		paddle_sound = rl.LoadSound("assets/Audio/Boing_sound.wav"),
+		boom_sound   = rl.LoadSound("assets/Audio/Boom.wav"),
+		win_sound    = rl.LoadSound("assets/Audio/Win_test.wav"),
 	}
-	defer rl.UnloadTexture(bg[0])
-	defer rl.UnloadTexture(bg[1])
-	defer rl.UnloadTexture(bg[2])
-	defer rl.UnloadTexture(bg[3])
 
-	paddle_sound := rl.LoadSound("assets/Audio/Boing_sound.wav")
-	win_sound := rl.LoadSound("assets/Audio/Win_test.wav")
-	boom_sound := rl.LoadSound("assets/Audio/Boom.wav")
+	defer rl.CloseAudioDevice()
+	defer rl.CloseWindow()
+	defer unload_assets(&asset)
+	defer delete_world(&world1)
 
-	rl.SetSoundVolume(boom_sound, 0.6)
-	rl.SetSoundVolume(paddle_sound, 1)
+	rl.SetSoundVolume(asset.boom_sound, 0.6)
+	rl.SetSoundVolume(asset.paddle_sound, 1)
 
-	defer rl.UnloadSound(win_sound)
-	defer rl.UnloadSound(paddle_sound)
-	defer rl.UnloadSound(boom_sound)
 
-	GiveNewBall(&world)
+	GiveNewBall(&world1)
 
-	for !rl.WindowShouldClose() {
+	for !rl.WindowShouldClose() && !world1.should_close {
+
+		switch (world1.game_state) {
+		case .Menu:
+			UpdateMenu(&world1)
+		case .Loop:
+			UpdateGame(&world1, asset)
+		}
 
 		//loop for checking any trauma alteraiont make ScreenShake(do something)
 		// re: you don't need to run this based on a branch.
@@ -108,106 +143,59 @@ main :: proc() {
 		} else {
 			game_camera.offset = {SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2}
 		}*/
-		world.bg_counter += 1
-		if world.bg_counter >= 5 {
-			world.bg_counter = 0
-			world.bg_index += 1
-			if world.bg_index >= 4 do world.bg_index = 0
-		}
-		UpdatePaddle(player, &world)
-		for i := int(world.balls.count) - 1; i >= 0; i -= 1 {
-			id := world.balls.dense[i]
-			ball := &world.balls.data[i]
-			UpdateBallVisuals(&world, ball)
-
-			vel_x := ball.speed_x + (math.sign(ball.speed_x) * ball.speed_boost)
-			vel_y := ball.speed_y + (math.sign(ball.speed_y) * ball.speed_boost)
-			max_vel := math.max(math.abs(vel_x), math.abs(vel_y))
-
-			sub_steps := int(math.ceil(max_vel / 4.0))
-			if sub_steps < 1 do sub_steps = 1
-
-			step_dt := 1.0 / f32(sub_steps)
-
-			for s in 0 ..< sub_steps {
-				UpdateBallPhysics(&world, ball, win_sound, step_dt)
-				if !player.paddle_bounced && CheckVisualHit(player, ball) {
-					angle = math.PI * 0.1
-					player.paddle_bounced = true // still need a trigger for UpdatePaddle...
-				}
-				CheckPaddleBounces(player, ball, &world, paddle_sound)
-				for j in 0 ..< len(world.blocks) {
-					if !world.blocks[j].active do continue
-					CheckBlocks(&world, &world.blocks[j], ball, boom_sound)
-				}
-			}
-
-			if ball.pos.y > SCREEN_HEIGHT {
-				rat.remove(&world.balls, id)
-				if world.balls.count == 0 {
-					world.lives -= 1
-					GiveNewBall(&world)
-				}
-			}
-
-		}
-
-		rat.UpdateTimers(&world.timers)
-
-		if world.balls.count == 0 && world.lives < 0 {
-			GiveNewBall(&world)
-		}
-
-		if world.lives <= 0 {
-			ResetGame(player, &world)
-		}
-
-		if world.win_condition {
-
-			world.win_condition = false
-			player.x = PADDLE_DEFAULT_SPAWN_X
-			player.y = PADDLE_DEFAULT_SPAWN_Y
-			world.lives = 5
-			world.round += 1
-
-			rat.clear_sparse_set(&world.balls)
-			for i in 0 ..< world.round + 1 {
-				GiveNewBall(&world, f32(i) * 1.5 - f32(world.round) * 0.75)
-			}
-
-			for i in 0 ..< len(world.blocks) {
-				if !world.blocks[i].active {
-					world.blocks[i].durability = 1 * world.round
-					world.blocks[i].active = true
-				}
-			}
-		}
-		update_particles(&world.particles)
-		UpdateScreenshake(&game_camera)
-
 		rl.BeginDrawing()
-		rl.DrawTexture(bg[world.bg_index], 0, 0, rl.WHITE)
+		rl.DrawTexture(asset.bg[world1.bg_index], 0, 0, rl.WHITE)
 
-		rl.DrawText(rl.TextFormat("%d", world.lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
-		rl.DrawText(
-			rl.TextFormat("%d", world.player_score),
-			3 * SCREEN_WIDTH / 4 - 20,
-			20,
-			20,
-			rl.WHITE,
-		)
+		switch (world1.game_state) {
+		case .Menu:
+			itens := [3]cstring{"START", "SETTINGS", "CLOSE"}
+			cursor_size: i32 = 20
+			font_size: i32 = 40
+			spacing: i32 = 10
+			item_count: i32 = len(itens)
+			for i in 0 ..< len(itens) {
+				text_width := rl.MeasureText(itens[i], font_size)
+				x := (SCREEN_WIDTH - text_width) / 2
 
-		rl.BeginMode2D(game_camera)
+				menu_height := item_count * font_size + (i32(item_count - 1) * spacing)
+				start_y := (SCREEN_HEIGHT - menu_height) / 2
+				y := start_y + i32(i) * (font_size + spacing)
 
-		for i in 0 ..< world.balls.count {
-			DrawBall(world.balls.data[i])
+				rl.DrawText(itens[i], i32(x), i32(y), 40, rl.YELLOW)
+
+
+				cursor_y :=
+					start_y + world1.cursor * (font_size + spacing) + (font_size - cursor_size) / 2
+				cursor_x :=
+					(SCREEN_WIDTH - rl.MeasureText(itens[world1.cursor], font_size)) / 2 - 30
+
+				rl.DrawRectangle(cursor_x, cursor_y, cursor_size, cursor_size, rl.WHITE)
+
+			}
+
+
+		case .Loop:
+			rl.DrawText(rl.TextFormat("%d", world1.lives), SCREEN_WIDTH / 4 - 20, 20, 20, rl.WHITE)
+			rl.DrawText(
+				rl.TextFormat("%d", world1.player_score),
+				3 * SCREEN_WIDTH / 4 - 20,
+				20,
+				20,
+				rl.WHITE,
+			)
+
+			rl.BeginMode2D(game_camera)
+
+			for i in 0 ..< world1.balls.count {
+				DrawBall(world1.balls.data[i])
+			}
+
+			DrawPaddle(player^, asset.glorp)
+			DrawBlocks(world1.blocks)
+			draw_particles(&world1.particles)
+
+			rl.EndMode2D()
 		}
-
-		DrawPaddle(player^, glorp)
-		DrawBlocks(world.blocks)
-		draw_particles(&world.particles)
-
-		rl.EndMode2D()
 
 		rl.EndDrawing()
 	}

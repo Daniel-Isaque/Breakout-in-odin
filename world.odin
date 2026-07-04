@@ -15,6 +15,9 @@ World :: struct {
 	win_condition:  bool,
 	bg_counter:     int,
 	bg_index:       int,
+	cursor:         i32,
+	game_state:     GameState,
+	should_close:   bool,
 }
 
 create_world :: proc() -> World {

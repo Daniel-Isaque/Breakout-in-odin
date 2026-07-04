@@ -66,17 +66,16 @@ UpdateBallVisuals :: proc(world: ^World, b: ^Ball) {
 		create_particle_rad(
 			&world.particles,
 			ParticleDto {
-				pos = b.pos +
-				[2]f32{random_range(-2, 2), random_range(-2, 2)},
-				angle         = 0,
-				color         = rl.WHITE,
-				lifetime      = 16,
-				scale         = {4, 4},
-				shape         = .CIRCLE,
-				shrink        = true,
+				pos = b.pos + [2]f32{random_range(-2, 2), random_range(-2, 2)},
+				angle = 0,
+				color = rl.WHITE,
+				lifetime = 16,
+				scale = {4, 4},
+				shape = .CIRCLE,
+				shrink = true,
 				shrink_factor = 0.1,
-				speed         = 0,
-				color_fade    = true,
+				speed = 0,
+				color_fade = true,
 				color_palette = &trail_palette,
 			},
 		)

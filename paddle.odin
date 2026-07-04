@@ -2,6 +2,7 @@ package breakout
 
 import "core:math"
 import rat "rat-engine"
+import box "vendor:box2d"
 import rl "vendor:raylib"
 
 PADDLE_DEFAULT_SPAWN_X: f32 : 195

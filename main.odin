@@ -162,7 +162,9 @@ main :: proc() {
 				y := start_y + i32(i) * (font_size + spacing)
 
 				rl.DrawText(itens[i], i32(x), i32(y), 40, rl.YELLOW)
-
+				if i32(i) == world1.cursor {
+					rl.DrawText(itens[i], i32(x), i32(y), 40, rl.PINK)
+				}
 
 				cursor_y :=
 					start_y + world1.cursor * (font_size + spacing) + (font_size - cursor_size) / 2

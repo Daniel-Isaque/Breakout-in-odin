@@ -42,6 +42,7 @@ GameAssets :: struct {
 	win_sound:    rl.Sound,
 	menu_swap:    rl.Sound,
 	menu_select:  rl.Sound,
+	parry_sound:  rl.Sound,
 }
 
 MenuOptions :: enum {
@@ -77,6 +78,7 @@ unload_assets :: proc(assets: ^GameAssets) {
 	rl.UnloadSound(assets^.win_sound)
 	rl.UnloadSound(assets^.menu_select)
 	rl.UnloadSound(assets^.menu_swap)
+	rl.UnloadSound(assets^.parry_sound)
 
 }
 
@@ -127,6 +129,7 @@ main :: proc() {
 		win_sound    = rl.LoadSound("assets/Audio/Win_test.wav"),
 		menu_swap    = rl.LoadSound("assets/Audio/menu_swap.wav"),
 		menu_select  = rl.LoadSound("assets/Audio/select_op.wav"),
+		parry_sound  = rl.LoadSound("assets/Audio/Parry.wav"),
 	}
 
 	defer rl.CloseAudioDevice()

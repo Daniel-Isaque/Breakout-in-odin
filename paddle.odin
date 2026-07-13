@@ -1,6 +1,7 @@
 package breakout
 
 import "core:math"
+import ti "core:time"
 import rat "rat-engine"
 import box "vendor:box2d"
 import rl "vendor:raylib"
@@ -20,6 +21,7 @@ Paddle :: struct {
 	visual_size:    rl.Vector2,
 	visual_target:  rl.Vector2,
 	paddle_bounced: bool,
+	parry_active:   bool,
 }
 amplitude: f32 = 10
 angle: f32 = 0
@@ -48,6 +50,7 @@ SpawnPlayer :: proc(world: ^World) {
 		virtual_pos   = {PADDLE_DEFAULT_VIRTUAL_X, PADDLE_DEFAULT_VIRTUAl_Y},
 		visual_size   = {65, 100},
 		visual_target = {PADDLE_DEFAULT_VISUAL_X, PADDLE_DEFAULT_VISUAL_Y},
+		parry_active  = false,
 	}
 	rat.add(&world.player, id, new_paddle)
 }
@@ -74,11 +77,66 @@ UpdatePaddle :: proc(p: ^Paddle, world: ^World) {
 		p.paddle_bounced = false
 	}
 
+	if rl.IsKeyPressed(.SPACE) && !p.parry_active {
+		p.parry_active = true
+
+		data_parry := new(PaddleHelper)
+		data_parry.world = world
+		data_parry.id = p.id
+
+		append(
+			&world.timers,
+			rat.Timer{counter = 0, frame_target = 100, data = data_parry, onComplete = Parry},
+		)
+
+	}
+
 }
-CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound) {
+
+Parry :: proc(raw: rawptr) {
+	data := (^PaddleHelper)(raw)
+	defer free(data)
+
+	player, ok := rat.get(&data.world.player, data.id)
+	if ok {
+		player.parry_active = false
+	}
+
+}
+
+BallSparkReset :: proc(raw: rawptr) {
+	data := (^BallScaleHelper)(raw)
+	defer free(data)
+
+	ball, ok := rat.get(&data.world.balls, data.id)
+	if ok {
+		ball.ball_spark = false
+	}
+}
+
+CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound, parry: rl.Sound) {
 	if rl.CheckCollisionRecs(GetBallRect(b^), rl.Rectangle{p.x, p.y, p.width, p.height}) {
 		if b.speed_y < 0 {
 			return
+		}
+		if p.parry_active && !b.ball_spark {
+			b.speed_boost += BALL_SPEED_INCREMENT * 10
+			rl.PlaySound(parry)
+			ti.sleep(ti.Second / 3)
+
+			data_ball := new(BallScaleHelper)
+			data_ball.world = world
+			data_ball.id = b.id
+
+			append(
+				&world.timers,
+				rat.Timer {
+					counter = 0,
+					frame_target = 200,
+					data = data_ball,
+					onComplete = BallSparkReset,
+				},
+			)
 		}
 		SquashBall(world, b.id)
 		PlaySoundWithRandomPitch(s, 0.5, 0.8)
@@ -114,7 +172,7 @@ CheckVisualHit :: proc(p: ^Paddle, b: ^Ball) -> bool {
 }
 
 ResetScaleP :: proc(raw: rawptr) {
-	data := (^PaddleScaler)(raw)
+	data := (^PaddleHelper)(raw)
 	defer free(data)
 
 	player, ok := rat.get(&data.world.player, data.id)
@@ -129,7 +187,7 @@ ResetScaleP :: proc(raw: rawptr) {
 }
 
 
-PaddleScaler :: struct {
+PaddleHelper :: struct {
 	world: ^World,
 	id:    rat.Id,
 }
@@ -142,7 +200,7 @@ SquashPaddle :: proc(world: ^World, paddle_id: rat.Id) {
 	player.visual_size.y = math.lerp(player.visual_size.y, player.visual_target.y - 20, f32(0.1))
 
 
-	data := new(PaddleScaler)
+	data := new(PaddleHelper)
 	data.world = world
 	data.id = paddle_id
 

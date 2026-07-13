@@ -26,6 +26,7 @@ Ball :: struct {
 	speed_x, speed_y: f32,
 	speed_boost:      f32,
 	color:            rl.Color,
+	ball_spark:       bool,
 }
 
 GetBallRect :: proc(b: Ball) -> rl.Rectangle {
@@ -147,6 +148,7 @@ GiveNewBall :: proc(world: ^World, angle_offset: f32 = 0) {
 		speed_y      = BALL_SPEED_Y,
 		speed_boost  = 0,
 		color        = rl.WHITE,
+		ball_spark   = false,
 	}
 
 	rat.add(&world.balls, id, new_ball)

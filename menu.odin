@@ -93,7 +93,7 @@ UpdateGame :: proc(world: ^World, assets: GameAssets) {
 				player.paddle_bounced = true
 			}
 
-			CheckPaddleBounces(player, ball, world, assets.paddle_sound)
+			CheckPaddleBounces(player, ball, world, assets.paddle_sound, assets.parry_sound)
 
 			for j in 0 ..< len(world.blocks) {
 				if !world.blocks[j].active do continue

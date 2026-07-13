@@ -86,7 +86,7 @@ UpdatePaddle :: proc(p: ^Paddle, world: ^World) {
 
 		append(
 			&world.timers,
-			rat.Timer{counter = 0, frame_target = 100, data = data_parry, onComplete = Parry},
+			rat.Timer{counter = 0, frame_target = 10, data = data_parry, onComplete = Parry},
 		)
 
 	}
@@ -120,6 +120,7 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound, par
 			return
 		}
 		if p.parry_active && !b.ball_spark {
+			b.ball_spark = true
 			b.speed_boost += BALL_SPEED_INCREMENT * 10
 			rl.PlaySound(parry)
 			ti.sleep(ti.Second / 3)
@@ -132,7 +133,7 @@ CheckPaddleBounces :: proc(p: ^Paddle, b: ^Ball, world: ^World, s: rl.Sound, par
 				&world.timers,
 				rat.Timer {
 					counter = 0,
-					frame_target = 200,
+					frame_target = 60,
 					data = data_ball,
 					onComplete = BallSparkReset,
 				},

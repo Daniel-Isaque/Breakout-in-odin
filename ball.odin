@@ -57,9 +57,13 @@ UpdateBallVisuals :: proc(world: ^World, b: ^Ball) {
 		b.visual_scale.y = math.lerp(b.visual_scale.y, b.target_scale.y, f32(0.1))
 	}
 
+
 	factor := math.clamp(b.speed_boost, 0, 1.0)
 	val := u8(255.0 * (1.0 - factor))
 	b.color = rl.Color{255, val, val, 255}
+	if b.ball_spark {
+		b.color = rl.YELLOW
+	}
 
 	arbitrary_speed_value: f32 = BALL_SPEED_X * 1.25
 	current_speed_x := math.abs(b.speed_x) + b.speed_boost
